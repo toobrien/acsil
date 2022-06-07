@@ -24,6 +24,11 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	#define threshold_row_offset		2
 	#define alert_distance_row_offset	3
 
+	#define from_high_row	4
+	#define from_low_row	5
+
+	// set defaults
+
 	SCInputRef 	base_row	= sc.Input[0];
 
 	if (sc.SetDefaults) {
@@ -75,7 +80,9 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 		return;
 
-	// record bids and asks where qty > threshold
+	// record bids and asks where qty > threshold.
+	// also find distance from high and low if
+	// reasonably close.
 
 	float	bid_lvls[max_outputs];
 	float	bid_qtys[max_outputs];
@@ -86,6 +93,9 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	int len_bids = 0;
 	int len_asks = 0;
+
+	int from_high	= -1;
+	int from_low	= -1;
 
 	int max_levels = sc.GetMaximumMarketDepthLevels();
 	
@@ -112,6 +122,10 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 		}
 
+		if (e.AdjustedPrice == sc.DailyLow)
+
+			from_low = i;
+
 		if (len_bids >= max_outputs) 
 		
 			break;
@@ -131,6 +145,10 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 			len_asks++;
 
 		}
+
+		if (e.AdjustedPrice == sc.DailyHigh)
+
+			from_high = i;
 
 		if (len_asks >= max_outputs)
 
@@ -159,8 +177,10 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 		sc.SetSheetCellAsString(h, ask_tics_col, i, clr);
 
 	}
-	
 
+	sc.SetSheetCellAsString(h, input_val_col, base_row_val + from_high_row, clr);
+	sc.SetSheetCellAsString(h, input_val_col, base_row_val + from_low_row, clr);
+	
 	// put all bids and asks where qty > threshold into spreadsheet
 
 	hi = lo + len_bids;
@@ -184,5 +204,15 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 		sc.SetSheetCellAsDouble(h, ask_tics_col, i, ask_tics[j++]);
 
 	}
+
+	// set from high / low
+
+	if (from_high > 0)
+
+		sc.SetSheetCellAsDouble(h, input_val_col, base_row_val + from_high_row, from_high);
+
+	if (from_low > 0)
+
+		sc.SetSheetCellAsDouble(h, input_val_col, base_row_val + from_low_row, from_low);
 
 }
