@@ -142,7 +142,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	
 	int lo = base_row_val + 1;
 	int hi = lo + max_outputs;
-	SCString clr = "";
+	SCString clr = "x";
 
 	for (int i = lo; i < hi; i++) {
 
