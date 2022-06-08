@@ -229,10 +229,11 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	// clear spreadsheet
 
-	int hi = base_row + max_outputs;
+	const int 	lo = base_row + 1;
+	int			hi = base_row + max_outputs;
 	SCString clr = "x";
 
-	for (int i = base_row; i < hi; i++) {
+	for (int i = lo; i < hi; i++) {
 
 		sc.SetSheetCellAsString(h, bid_lvls_col, i, clr);
 		sc.SetSheetCellAsString(h, bid_qtys_col, i, clr);
@@ -240,7 +241,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	}
 
-	for (int i = base_row; i < hi; i++) {
+	for (int i = lo; i < hi; i++) {
 
 		sc.SetSheetCellAsString(h, ask_lvls_col, i, clr);
 		sc.SetSheetCellAsString(h, ask_qtys_col, i, clr);
@@ -257,7 +258,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	hi = base_row + len_bids;
 	int j = 0;
 
-	for (int i = base_row; i < hi; i++) {
+	for (int i = lo; i < hi; i++) {
 
 		sc.SetSheetCellAsDouble(h, bid_lvls_col, i, bid_lvls[j]);
 		sc.SetSheetCellAsDouble(h, bid_qtys_col, i, bid_qtys[j]);
@@ -268,7 +269,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	hi = base_row + len_asks;
 	j = 0;
 
-	for (int i = base_row; i < hi; i++) {
+	for (int i = lo; i < hi; i++) {
 
 		sc.SetSheetCellAsDouble(h, ask_lvls_col, i, ask_lvls[j]);
 		sc.SetSheetCellAsDouble(h, ask_qtys_col, i, ask_qtys[j]);
