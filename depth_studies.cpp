@@ -27,8 +27,9 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	#define symbol_row			0
 	#define max_outputs_row		1
 	#define threshold_row		2
-	#define alert_distance_row	3
+	#define alert_distance_row	3	// not used
 	#define num_trades_row		4
+	#define num_liq_lvls_row	5
 
 	#define from_high_row			0
 	#define from_low_row			1
@@ -40,8 +41,6 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	#define num_trades_key	1
 	#define trades_key		2
 	#define trades_idx_key	3
-
-	#define liquidity_balance_n_levels	10
 
 	// set defaults
 	
@@ -103,16 +102,19 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	double d_threshold 		= -1;
 	double d_alert_distance = -1;
 	double d_num_trades_	= -1;
+	double d_num_liq_levels = -1;
 	
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + max_outputs_row, d_max_outputs);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + threshold_row, d_threshold);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + alert_distance_row, d_alert_distance);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_trades_row, d_num_trades_);
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_trades_row, d_num_liq_levels);
 
-	int max_outputs 	= (int)d_max_outputs;
-	int threshold		= (int)d_threshold;
-	int alert_distance	= (int)d_alert_distance;
-	int num_trades_		= (int)d_num_trades_;
+	int max_outputs 	= static_cast<int>(d_max_outputs);
+	int threshold		= static_cast<int>(d_threshold);
+	int alert_distance	= static_cast<int>(d_alert_distance);
+	int num_trades_		= static_cast<int>(d_num_trades_);
+	int num_liq_levels  = static_cast<int>(d_num_liq_levels);
 
 	// first run, or user has changed number of trades: re-allocate buffer
 
@@ -181,7 +183,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 		}
 
-		if (i < liquidity_balance_n_levels)
+		if (i < num_liq_levels)
 
 			total_bids += e.Quantity;
 
@@ -213,7 +215,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 			from_high = i;
 
-		if (i < liquidity_balance_n_levels)
+		if (i < num_liq_levels)
 
 			total_asks += e.Quantity;
 
