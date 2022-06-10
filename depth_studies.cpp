@@ -39,10 +39,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	#define base_row_key			0
 	#define num_trades_key			1
-	#define tas_idx_key				2
-	#define at_bid_total_key		3
-	#define at_ask_total_key		4
-	#define high_volume_key			5
+	#define high_volume_key			2
 
 	// set defaults
 	
@@ -50,9 +47,6 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	void * 	h				= sc.GetSpreadsheetSheetHandleByName("depth_sheet", "main", false);
 	int	&	base_row 		= sc.GetPersistentInt(base_row_key);
-	int &	tas_idx			= sc.GetPersistentInt(tas_idx_key);
-	int & 	at_bid_total	= sc.GetPersistentInt(at_bid_total_key);
-	int & 	at_ask_total	= sc.GetPersistentInt(at_ask_total_key);
 	int &	high_volume		= sc.GetPersistentInt(high_volume_key);
 
 	if (sc.SetDefaults) {
@@ -66,9 +60,6 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 		symbol_input.SetString("");
 		
 		base_row 		= -1;
-		tas_idx			= -1;
-		at_bid_total	= -1;
-		at_ask_total	= -1;
 		high_volume		= -1;
 
 		return;
