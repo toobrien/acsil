@@ -140,7 +140,6 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	if (len_tas > 0) {
 
-		int count	= 0;
 		int j 		= len_tas - min(num_trades, len_tas);
 
 		for (int i = j; i < len_tas; i++) {
@@ -152,21 +151,17 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 				at_bid += r.Volume;
 
-				count++;
 				// sc.AddMessageToLog(("at_bid: " + std::to_string(at_bid)).c_str(), 1);
 
 			} else if (r.Type == SC_TS_ASK) {
 
 				at_ask += r.Volume;
 				
-				count++;
 				// sc.AddMessageToLog(("at_ask" + std::to_string(at_ask)).c_str(), 1);
 
 			}
 
 		}
-
-		// sc.AddMessageToLog(("total trades" + std::to_string(count)).c_str(), 1);
 
 		if (at_bid > 0.0)
 		
