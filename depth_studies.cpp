@@ -1,5 +1,6 @@
 #include "sierrachart.h"
 #include <string>
+#include <stdlib.h>
 
 // For reference, refer to this page:
 // https://www.sierrachart.com/index.php?page=doc/AdvancedCustomStudyInterfaceAndLanguage.php
@@ -28,7 +29,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	#define max_outputs_row		1
 	#define threshold_row		2
 	#define alert_distance_row	3	// not used
-	#define num_trades_row		4
+	#define num_records_row		4
 	#define num_liq_lvls_row	5
 
 	#define from_high_row			0
@@ -36,9 +37,13 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	#define liquidity_balance_row	2
 	#define delta_row				3
 	#define volume_row				4
+	#define net_ticks_row			5
+	#define imbalance_row			6
+	#define abs_liq_row				7
+	#define sample_row				8
 
 	#define base_row_key			0
-	#define num_trades_key			1
+	#define num_records_key			1
 	#define high_volume_key			2
 
 	// set defaults
@@ -98,24 +103,24 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	double d_max_outputs 	= -1.0;
 	double d_threshold 		= -1.0;
 	double d_alert_distance = -1.0;
-	double d_num_trades		= -1.0;
+	double d_num_records		= -1.0;
 	double d_num_liq_lvls 	= -1.0;
 	
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + max_outputs_row, d_max_outputs);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + threshold_row, d_threshold);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + alert_distance_row, d_alert_distance);
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_trades_row, d_num_trades);
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_records_row, d_num_records);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_liq_lvls_row, d_num_liq_lvls);
 
 	int max_outputs 	= static_cast<int>(d_max_outputs);
 	int threshold		= static_cast<int>(d_threshold);
 	int alert_distance	= static_cast<int>(d_alert_distance);
-	int num_trades		= static_cast<int>(d_num_trades);
+	int num_records		= static_cast<int>(d_num_records);
 	int num_liq_levels  = static_cast<int>(d_num_liq_lvls);
 
 	c_SCTimeAndSalesArray tas;
 
-	if (num_trades > 0)
+	if (num_records > 0)
 
 		sc.GetTimeAndSales(tas);
 
@@ -124,47 +129,108 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	// START 	time and sales: delta, volume
 
 	int 	len_tas	= tas.Size();
-	float 	at_bid	= 0.0;
-	float 	at_ask	= 0.0;
-	float 	delta 	= -1.0;
-	float 	volume	= 0.0;
+
+	double	first_price		= DBL_MIN;
+	double	last_price		= DBL_MIN;
+	double 	at_bid_total	= 0.0;
+	double 	at_ask_total	= 0.0;
+	double	imbalance		= 0.0;
+	double	net_ticks		= 0.0;
+	double 	abs_liq			= 0.0;
+	double	sample			= 0.0;
+
+	double 	delta 	= -1.0;
+	double 	volume	= 0.0;
 
 	if (len_tas > 0) {
 
-		int j 		= len_tas - min(num_trades, len_tas);
+		int j = len_tas - min(num_records, len_tas);
+
+		// record first price
 
 		for (int i = j; i < len_tas; i++) {
 
 			s_TimeAndSales r = tas[i];
 			r *= sc.RealTimePriceMultiplier;
 
-			if (r.Type == SC_TS_BID) {
+			if (r.Type != SC_TS_BIDASKVALUES) {
 
-				at_bid += r.Volume;
-
-				// sc.AddMessageToLog(("at_bid: " + std::to_string(at_bid)).c_str(), 1);
-
-			} else if (r.Type == SC_TS_ASK) {
-
-				at_ask += r.Volume;
+				first_price = r.Price;
 				
-				// sc.AddMessageToLog(("at_ask" + std::to_string(at_ask)).c_str(), 1);
+				break;
 
 			}
 
 		}
 
-		if (at_bid > 0.0)
-		
-			delta = at_ask / at_bid;
+		// record volumes, last price
 
-		volume = at_bid + at_ask;
+		for (int i = j; i < len_tas; i++) {
+
+			s_TimeAndSales r = tas[i];
+			r *= sc.RealTimePriceMultiplier;
+
+			switch(r.Type) {
+
+				case SC_TS_BID:
+
+					at_bid_total	+=	r.Volume;
+					last_price		=	r.Price;	 
+					
+					// sc.AddMessageToLog(("at_bid: " + std::to_string(at_bid)).c_str(), 1);
+
+					break;
+
+				case SC_TS_ASK:
+
+					at_ask_total	+= r.Volume;
+					last_price 		=	r.Price;
+
+					// sc.AddMessageToLog(("at_ask" + std::to_string(at_ask)).c_str(), 1);
+					
+					break;
+
+
+				case SC_TS_BIDASKVALUES:
+
+					break;
+
+				default:
+
+					break;
+				
+			}
+
+		}
+
+		// compute normalized delta
+
+		if (at_bid_total > 0.0)
+		
+			delta = at_ask_total / at_bid_total;
+
+		volume = at_bid_total + at_ask_total;
+
+		// compute normalized volume
 
 		if (volume > high_volume)
 
 			high_volume = volume;
 
 		volume /= high_volume;
+
+		// compute total ticks, net imbalance		
+
+		net_ticks	= (last_price - first_price) / sc.TickSize;
+		imbalance	= at_ask_total - at_bid_total;
+		
+		if (imbalance != 0.0)
+		
+			// truncate 
+
+			abs_liq	= static_cast<int>(abs(imbalance / net_ticks));
+
+		sample = at_bid_total + at_ask_total;
 
 	}
 
@@ -297,6 +363,10 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + from_high_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + from_low_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + liquidity_balance_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + net_ticks_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + imbalance_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + abs_liq_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + sample_row, clr);
 	
 	// put all bids and asks where qty > threshold into spreadsheet
 
@@ -344,6 +414,16 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	if (volume > 0)
 
 		sc.SetSheetCellAsDouble(h, stat_val_col, base_row + volume_row, volume);
+
+
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, net_ticks);
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + imbalance_row, imbalance);
+	
+	if (abs_liq > 0)
+
+		sc.SetSheetCellAsDouble(h, stat_val_col, base_row + abs_liq_row, abs_liq);
+
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
 
 	// END		spreadsheet
 
