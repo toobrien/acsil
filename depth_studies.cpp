@@ -51,6 +51,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	// set defaults
 	
 	SCInputRef symbol_input	= sc.Input[0];
+	SCInputRef sheet_input	= sc.Input[1];
 
 	void * 	h				= sc.GetSpreadsheetSheetHandleByName("depth_sheet", "main", false);
 	int	&	base_row 		= sc.GetPersistentInt(base_row_key);
@@ -65,6 +66,9 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 		symbol_input.Name = "symbol";
 		symbol_input.SetString("");
+
+		sheet_input.Name = "sheet name";
+		sheet_input.SetString("");
 		
 		base_row 		= -1;
 		high_volume		= -1;
@@ -441,7 +445,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + delta_row, fmt.Format("%.2f", delta));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + ask_tick_avg_row, static_cast<int>(ask_tick_avg));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + bid_tick_avg_row, static_cast<int>(bid_tick_avg));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, net_ticks);
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, static_cast<int>(net_ticks));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + imbalance_row, imbalance);
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_density_row, static_cast<int>(range_density));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_row, static_cast<int>(range));
