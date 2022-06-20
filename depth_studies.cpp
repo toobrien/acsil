@@ -53,7 +53,6 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	SCInputRef symbol_input	= sc.Input[0];
 	SCInputRef sheet_input	= sc.Input[1];
 
-	void * 	h				= sc.GetSpreadsheetSheetHandleByName("depth_sheet", "main", false);
 	int	&	base_row 		= sc.GetPersistentInt(base_row_key);
 	int &	high_volume		= sc.GetPersistentInt(high_volume_key);
 
@@ -78,6 +77,16 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 	}
 
 	// initialize base row by scanning spreadsheet for input symbol
+
+	const char * sheet_name = sheet_input.GetString();
+
+	if (!std::strcmp(sheet_name, ""))
+
+		// user has not set sheet name
+
+		return;
+
+	void * h = sc.GetSpreadsheetSheetHandleByName("depth_sheet", sheet_name, false);
 
 	if (base_row < 0) {
 		
