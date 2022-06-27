@@ -616,6 +616,8 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 	SCInputRef num_profiles_input	= sc.Input[2];	// max number of profiles to use
 	SCInputRef study_id_input		= sc.Input[3];  // TPO study id
 
+	int & initialized = sc.GetPersistentInt(0);
+
 	if (sc.SetDefaults) {
 
 		sc.GraphName 			= "tpo_to_spreadsheet";
@@ -633,6 +635,8 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
 		study_id_input.Name = "study_id";
 		study_id_input.SetInt(-1);
+
+		initialized = 0;
 
 		return;
 		
@@ -659,58 +663,62 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
 	// set row headers
 
-	sc.SetSheetCellAsString(h, 0, StartDateTime_row, "StartDateTime");
-	sc.SetSheetCellAsString(h, 0, NumberOfTrades_row, "NumberOfTrades");
-	sc.SetSheetCellAsString(h, 0, Volume_row, "Volume");
-	sc.SetSheetCellAsString(h, 0, BidVolume_row, "BidVolume");
-	sc.SetSheetCellAsString(h, 0, AskVolume_row, "AskVolume");
-	sc.SetSheetCellAsString(h, 0, TotalTPOCount_row, "TotalTPOCount");
-	sc.SetSheetCellAsString(h, 0, OpenPrice_row, "OpenPrice");
-	sc.SetSheetCellAsString(h, 0, HighestPrice_row, "Highest_price");
-    sc.SetSheetCellAsString(h, 0, LowestPrice_row, "LowestPrice");
-	sc.SetSheetCellAsString(h, 0, LastPrice_row, "LastPrice");
-	sc.SetSheetCellAsString(h, 0, TPOMidpointPrice_row, "TPOMidpointPrice");
-	sc.SetSheetCellAsString(h, 0, TPOMean_row, "TPOMean");
-	sc.SetSheetCellAsString(h, 0, TPOStdDev_row, "TPOStdDev");
-	sc.SetSheetCellAsString(h, 0, TPOErrorOfMean_row, "TPOErrorOfMean");
-	sc.SetSheetCellAsString(h, 0, TPOMean_row, "TPOMean");
-	sc.SetSheetCellAsString(h, 0, TPOPOCPrice_row, "TPOPOCPrice");
-	sc.SetSheetCellAsString(h, 0, TPOValueAreaHigh_row, "TPOValueAreaHigh");
-	sc.SetSheetCellAsString(h, 0, TPOValueAreaLow_row, "TPOValueAreaLow");
-	sc.SetSheetCellAsString(h, 0, TPOCountAbovePOC_row, "TPOCountAbovePOC");
-	sc.SetSheetCellAsString(h, 0, TPOCountBelowPOC_row, "TPOCountBelowPOC");
-	sc.SetSheetCellAsString(h, 0, VolumeMidpointPrice_row, "VolumeMidpointPrice");
-	sc.SetSheetCellAsString(h, 0, VolumePOCPrice_row, "VolumePOCPrice");
-	sc.SetSheetCellAsString(h, 0, VolumeValueAreaHigh_row, "VolumeValueAreaHigh");
-	sc.SetSheetCellAsString(h, 0, VolumeValueAreaLow, "VolumeValueAreaLow");
-	sc.SetSheetCellAsString(h, 0, VolumeAbovePOC_row, "VolumeAbovePOC");
-	sc.SetSheetCellAsString(h, 0, VolumeBelowPOC_row, "VolumeBelowPOC");
-	sc.SetSheetCellAsString(h, 0, POCAboveBelowVolumeImbalancePercent_row, "POCAboveBelowVolumeImbalancePercent");
-	sc.SetSheetCellAsString(h, 0, VolumeAboveLastPrice_row, "VolumeAboveLastPrice");
-	sc.SetSheetCellAsString(h, 0, VolumeBelowLastPrice_row, "VolumeBelowLastPrice");
-	sc.SetSheetCellAsString(h, 0, BidVolumeAbovePOC_row, "BidVolumeAbovePOC");
-	sc.SetSheetCellAsString(h, 0, BidVolumeBelowPOC_row, "BidVolumeBelowPOC");
-	sc.SetSheetCellAsString(h, 0, AskVolumeAbovePOC_row, "AskVolumeAbovePOC");
-	sc.SetSheetCellAsString(h, 0, AskVolumeBelowPOC_row, "AskVolumeBelowPOC");
-	sc.SetSheetCellAsString(h, 0, VolumeTimesPriceInTicks_row, "VolumeTimesPriceInTicks");
-    sc.SetSheetCellAsString(h, 0, TradesTimesPriceInTicks_row, "TradesTimesPriceInTicks");
-	sc.SetSheetCellAsString(h, 0, TradesTimesPriceSquaredInTicks_row, "TradesTimesPriceSquaredInTicks");
-	sc.SetSheetCellAsString(h, 0, IBRHighPrice_row, "IBRHighPrice");
-	sc.SetSheetCellAsString(h, 0, IBRLowPrice_row, "IBRLowPrice");
-	sc.SetSheetCellAsString(h, 0, OpeningRangeHighPrice_row, "OpeningRangeHighPrice");
-	sc.SetSheetCellAsString(h, 0, OpeningRangeLowPrice_row, "OpeningRangeLowPrice");
-	sc.SetSheetCellAsString(h, 0, VolumeWeightedAveragePrice_row, "VolumeWeightedAveragePrice");
-	sc.SetSheetCellAsString(h, 0, MaxTPOBlocksCount_row, "MaxTPOBlocksCount");
-	sc.SetSheetCellAsString(h, 0, TPOCountMaxDigits_row, "TPOCountMaxDigits");
-	sc.SetSheetCellAsString(h, 0, DisplayIndependentColumns_row, "DisplayIndependentColumns");
-	sc.SetSheetCellAsString(h, 0, EveningSession_row, "EveningSession");
-	sc.SetSheetCellAsString(h, 0, AverageSubPeriodRange_row, "AverageSubPeriodRange");
-	sc.SetSheetCellAsString(h, 0, RotationFactor_row, "RotationFactor");
-	sc.SetSheetCellAsString(h, 0, VolumeAboveTPOPOC_row, "VolumeAboveTPOPOC");
-	sc.SetSheetCellAsString(h, 0, VolumeBelowTPOPOC_row, "VolumeBelowTPOPOC");
-	sc.SetSheetCellAsString(h, 0, EndDateTime_row, "EndDateTime");
-	sc.SetSheetCellAsString(h, 0, BeginIndex_row, "BeginIndex");
-	sc.SetSheetCellAsString(h, 0, EndIndex_row, "EndIndex");
+	if (!initialized) {
+
+		sc.SetSheetCellAsString(h, 0, StartDateTime_row, "StartDateTime");
+		sc.SetSheetCellAsString(h, 0, NumberOfTrades_row, "NumberOfTrades");
+		sc.SetSheetCellAsString(h, 0, Volume_row, "Volume");
+		sc.SetSheetCellAsString(h, 0, BidVolume_row, "BidVolume");
+		sc.SetSheetCellAsString(h, 0, AskVolume_row, "AskVolume");
+		sc.SetSheetCellAsString(h, 0, TotalTPOCount_row, "TotalTPOCount");
+		sc.SetSheetCellAsString(h, 0, OpenPrice_row, "OpenPrice");
+		sc.SetSheetCellAsString(h, 0, HighestPrice_row, "Highest_price");
+		sc.SetSheetCellAsString(h, 0, LowestPrice_row, "LowestPrice");
+		sc.SetSheetCellAsString(h, 0, LastPrice_row, "LastPrice");
+		sc.SetSheetCellAsString(h, 0, TPOMidpointPrice_row, "TPOMidpointPrice");
+		sc.SetSheetCellAsString(h, 0, TPOMean_row, "TPOMean");
+		sc.SetSheetCellAsString(h, 0, TPOStdDev_row, "TPOStdDev");
+		sc.SetSheetCellAsString(h, 0, TPOErrorOfMean_row, "TPOErrorOfMean");
+		sc.SetSheetCellAsString(h, 0, TPOMean_row, "TPOMean");
+		sc.SetSheetCellAsString(h, 0, TPOPOCPrice_row, "TPOPOCPrice");
+		sc.SetSheetCellAsString(h, 0, TPOValueAreaHigh_row, "TPOValueAreaHigh");
+		sc.SetSheetCellAsString(h, 0, TPOValueAreaLow_row, "TPOValueAreaLow");
+		sc.SetSheetCellAsString(h, 0, TPOCountAbovePOC_row, "TPOCountAbovePOC");
+		sc.SetSheetCellAsString(h, 0, TPOCountBelowPOC_row, "TPOCountBelowPOC");
+		sc.SetSheetCellAsString(h, 0, VolumeMidpointPrice_row, "VolumeMidpointPrice");
+		sc.SetSheetCellAsString(h, 0, VolumePOCPrice_row, "VolumePOCPrice");
+		sc.SetSheetCellAsString(h, 0, VolumeValueAreaHigh_row, "VolumeValueAreaHigh");
+		sc.SetSheetCellAsString(h, 0, VolumeValueAreaLow, "VolumeValueAreaLow");
+		sc.SetSheetCellAsString(h, 0, VolumeAbovePOC_row, "VolumeAbovePOC");
+		sc.SetSheetCellAsString(h, 0, VolumeBelowPOC_row, "VolumeBelowPOC");
+		sc.SetSheetCellAsString(h, 0, POCAboveBelowVolumeImbalancePercent_row, "POCAboveBelowVolumeImbalancePercent");
+		sc.SetSheetCellAsString(h, 0, VolumeAboveLastPrice_row, "VolumeAboveLastPrice");
+		sc.SetSheetCellAsString(h, 0, VolumeBelowLastPrice_row, "VolumeBelowLastPrice");
+		sc.SetSheetCellAsString(h, 0, BidVolumeAbovePOC_row, "BidVolumeAbovePOC");
+		sc.SetSheetCellAsString(h, 0, BidVolumeBelowPOC_row, "BidVolumeBelowPOC");
+		sc.SetSheetCellAsString(h, 0, AskVolumeAbovePOC_row, "AskVolumeAbovePOC");
+		sc.SetSheetCellAsString(h, 0, AskVolumeBelowPOC_row, "AskVolumeBelowPOC");
+		sc.SetSheetCellAsString(h, 0, VolumeTimesPriceInTicks_row, "VolumeTimesPriceInTicks");
+		sc.SetSheetCellAsString(h, 0, TradesTimesPriceInTicks_row, "TradesTimesPriceInTicks");
+		sc.SetSheetCellAsString(h, 0, TradesTimesPriceSquaredInTicks_row, "TradesTimesPriceSquaredInTicks");
+		sc.SetSheetCellAsString(h, 0, IBRHighPrice_row, "IBRHighPrice");
+		sc.SetSheetCellAsString(h, 0, IBRLowPrice_row, "IBRLowPrice");
+		sc.SetSheetCellAsString(h, 0, OpeningRangeHighPrice_row, "OpeningRangeHighPrice");
+		sc.SetSheetCellAsString(h, 0, OpeningRangeLowPrice_row, "OpeningRangeLowPrice");
+		sc.SetSheetCellAsString(h, 0, VolumeWeightedAveragePrice_row, "VolumeWeightedAveragePrice");
+		sc.SetSheetCellAsString(h, 0, MaxTPOBlocksCount_row, "MaxTPOBlocksCount");
+		sc.SetSheetCellAsString(h, 0, TPOCountMaxDigits_row, "TPOCountMaxDigits");
+		sc.SetSheetCellAsString(h, 0, DisplayIndependentColumns_row, "DisplayIndependentColumns");
+		sc.SetSheetCellAsString(h, 0, EveningSession_row, "EveningSession");
+		sc.SetSheetCellAsString(h, 0, AverageSubPeriodRange_row, "AverageSubPeriodRange");
+		sc.SetSheetCellAsString(h, 0, RotationFactor_row, "RotationFactor");
+		sc.SetSheetCellAsString(h, 0, VolumeAboveTPOPOC_row, "VolumeAboveTPOPOC");
+		sc.SetSheetCellAsString(h, 0, VolumeBelowTPOPOC_row, "VolumeBelowTPOPOC");
+		sc.SetSheetCellAsString(h, 0, EndDateTime_row, "EndDateTime");
+		sc.SetSheetCellAsString(h, 0, BeginIndex_row, "BeginIndex");
+		sc.SetSheetCellAsString(h, 0, EndIndex_row, "EndIndex");
+	
+	}
     
 	// copy TPO values into spreadsheet
 
@@ -779,7 +787,14 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
 			j++;
 	
-		}	
+		}
+
+		if (initialized)
+
+			// only update the latest profile after the first run.
+			// need to restart the study after a new session.
+			
+			break;
 	
 	}
 
