@@ -154,8 +154,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	double net_ticks		= 0.0;
 	double ask_tick_avg		= 0.0;
 	double bid_tick_avg		= 0.0;
-	double high_tick		= 0.0;
-	double low_tick			= 0.0;
+	double high_tick		= DBL_MIN;
+	double low_tick			= DBL_MAX;
 	double range			= 0.0;
 	double range_density	= 0.0;
 	double sample			= 0.0;
@@ -170,8 +170,9 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	if (len_tas > 0) {
 
 		int trade_count = 0;
+		int start = max(len_tas - trades, 0);
 
-		for (int i = 0; i < len_tas; i++) {
+		for (int i = start; i < len_tas; i++) {
 
 			// init
 
@@ -252,20 +253,23 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 					
 					if (rotation_side > -1) {
 
-						rotation_side 	= -1;
-						rotation_low    = r.Price;
+						rotation_side 		= -1;
+						rotation_low 		= r.Price;
+						from_rotation_low 	= 0;			// skip subsequent if block
 
 					}
 					
-					rotation_length = max(from_rotation_high, rotation_length); 
+					rotation_length = max(from_rotation_high, rotation_length);
+				
+				}
 
-				} else if (from_rotation_low >= min_rotation) {
+				if (from_rotation_low >= min_rotation) {
 
 					if (rotation_side < 1) {
 
 						rotation_side	= 1;
 						rotation_high	= r.Price;
-
+ 
 					}
 
 					rotation_length = max(from_rotation_low, rotation_length);
