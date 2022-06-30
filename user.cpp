@@ -3,63 +3,57 @@
 #include <stdlib.h>
 #include <map>
 
-// For reference, refer to this page:
-// https://www.sierrachart.com/index.php?page=doc/AdvancedCustomStudyInterfaceAndLanguage.php
-
 SCDLLName("user")
 
-SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
+SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 	#define MAX_SYMBOL_ROWS 1000
 
 	#define input_head_col  0
 	#define input_val_col	1
-	#define spacer_col_a	2
-	#define stat_head_col   3
-	#define stat_val_col	4
-	#define spacer_col_b	5
-	#define bid_lvls_col	6
-	#define bid_qtys_col   	7
-	#define bid_tics_col    8
-	#define spacer_col_c    9
-	#define ask_lvls_col 	10
-	#define ask_qtys_col   	11
-	#define ask_tics_col	12
-	
+	#define stat_head_col   2
+	#define stat_val_col	3
+
 	#define symbol_row			0
-	#define max_outputs_row		1
-	#define threshold_row		2
-	#define alert_distance_row	3	// not used
-	#define num_trades_row		4
-	#define num_liq_lvls_row	5
+	#define trades_row			1
+	#define liq_lvls_row		2
+	#define min_rotation_row	3
 
-	#define from_high_row			0
-	#define from_low_row			1
-	#define liquidity_balance_row	2
-	#define delta_row				3
-	#define imbalance_row			4
-	#define ask_tick_avg_row		5
-	#define bid_tick_avg_row		6
-	#define range_density_row		7
-	#define range_row				8
-	#define net_ticks_row			9
-	#define volume_row				10
-	#define sample_row				11
+	#define liquidity_balance_row	0
+	#define delta_row				1
+	#define imbalance_row			2
+	#define ask_tick_avg_row		3
+	#define bid_tick_avg_row		4
+	#define range_density_row		5
+	#define range_row				6
+	#define net_ticks_row			7
+	#define rotation_side_row		8
+	#define rotation_start_row		9
+	#define rotation_length_row		10
+	#define volume_row				11
+	#define sample_row				12
 
-	#define base_row_key			0
-	#define high_volume_key			1
+	#define base_row_key		0
+	#define high_volume_key		1
+	#define rotation_side_key	2
+	#define rotation_high_key	3
+	#define rotation_low_key	4
 
 	// set defaults
 	
 	SCInputRef symbol_input	= sc.Input[0];
-	SCInputRef sheet_input	= sc.Input[1];
+	SCInputRef file_input	= sc.Input[1];
+	SCInputRef sheet_input	= sc.Input[2];
 
-	int	&	base_row 		= sc.GetPersistentInt(base_row_key);
-	int &	high_volume		= sc.GetPersistentInt(high_volume_key);
+	int		&	base_row 			= sc.GetPersistentInt(base_row_key);
+	int 	&	high_volume			= sc.GetPersistentInt(high_volume_key);
+	int		&	rotation_side		= sc.GetPersistentInt(rotation_side_key);
+	double 	&	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
+	double 	&	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
 
 	if (sc.SetDefaults) {
 
-		sc.GraphName 			= "large_orders";
+		sc.GraphName 			= "order_flow";
 		sc.AutoLoop 			= 0;
 		sc.UsesMarketDepthData 	= 1;
 		sc.HideStudy 			= 1;
@@ -67,27 +61,37 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 		symbol_input.Name = "symbol";
 		symbol_input.SetString("");
 
-		sheet_input.Name = "sheet name";
+		file_input.Name = "file_name";
+		file_input.SetString("");
+
+		sheet_input.Name = "sheet_name";
 		sheet_input.SetString("");
 		
-		base_row 		= -1;
-		high_volume		= -1;
+		base_row 			= -1;
+		high_volume			= -1;
+		rotation_side		= 0;
+		rotation_high		= DBL_MIN;
+		rotation_low		= DBL_MAX;
 
 		return;
-		
+
 	}
 
 	// initialize base row by scanning spreadsheet for input symbol
 
+	const char * file_name	= file_input.GetString();
 	const char * sheet_name = sheet_input.GetString();
 
-	if (!std::strcmp(sheet_name, ""))
+	if (
+		!std::strcmp(file_name, "")		||
+		!std::strcmp(sheet_name, "")
+	)
 
-		// user has not set sheet name
+		// user has not initialized the spreadsheet inputs
 
 		return;
 
-	void * h = sc.GetSpreadsheetSheetHandleByName("depth_sheet", sheet_name, false);
+	void * h = sc.GetSpreadsheetSheetHandleByName(file_name, sheet_name, false);
 
 	if (base_row < 0) {
 		
@@ -114,90 +118,92 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	}
 
-	// START	initialize remaining inputs from spreadsheet
+	// initialize remaining inputs from spreadsheet
 
-	double d_max_outputs 	= -1.0;
-	double d_threshold 		= -1.0;
-	double d_alert_distance = -1.0;
-	double d_num_trades		= -1.0;
-	double d_num_liq_lvls 	= -1.0;
+	double d_trades			= -1.0;
+	double d_liq_lvls 		= -1.0;
+	double d_min_rotation	= -1.0;
+
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + trades_row, d_trades);
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + liq_lvls_row, d_liq_lvls);
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + min_rotation_row, d_min_rotation);
+
+	int trades			= static_cast<int>(d_trades);
+	int liq_levels  	= static_cast<int>(d_liq_lvls);
+	int min_rotation 	= static_cast<int>(d_min_rotation); 
 	
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + max_outputs_row, d_max_outputs);
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + threshold_row, d_threshold);
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + alert_distance_row, d_alert_distance);
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_trades_row, d_num_trades);
-	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_liq_lvls_row, d_num_liq_lvls);
-
-	int max_outputs 	= static_cast<int>(d_max_outputs);
-	int threshold		= static_cast<int>(d_threshold);
-	int alert_distance	= static_cast<int>(d_alert_distance);
-	int num_trades		= static_cast<int>(d_num_trades);
-	int num_liq_levels  = static_cast<int>(d_num_liq_lvls);
-
 	c_SCTimeAndSalesArray tas;
 
-	if (num_trades > 0)
+	if (trades > 0)
 
 		sc.GetTimeAndSales(tas);
 
-	// END		initialize remaining inputs from spreadsheet
+	// compute stats
 
-	// START 	time and sales: delta, volume
+	int len_tas	= tas.Size();
 
-	int 	len_tas	= tas.Size();
+	double first_price		= 0.0;
+	double last_price		= 0.0;
+	double prev_ask			= 0.0;
+	double prev_bid			= 0.0;
+	double ask_ticks		= 0.0;
+	double bid_ticks		= 0.0;
+	double at_bid_total		= 0.0;
+	double at_ask_total		= 0.0;
+	double imbalance		= 0.0;
+	double net_ticks		= 0.0;
+	double ask_tick_avg		= 0.0;
+	double bid_tick_avg		= 0.0;
+	double high_tick		= 0.0;
+	double low_tick			= 0.0;
+	double range			= 0.0;
+	double range_density	= 0.0;
+	double sample			= 0.0;
 
-	double	first_price		= DBL_MIN;
-	double	last_price		= DBL_MIN;
-	double  prev_ask		= DBL_MAX;
-	double  prev_bid		= DBL_MIN;
-	double  ask_ticks		= 0.0;
-	double 	bid_ticks		= 0.0;
-	double 	at_bid_total	= 0.0;
-	double 	at_ask_total	= 0.0;
-	double	imbalance		= 0.0;
-	double	net_ticks		= 0.0;
-	double	ask_tick_avg	= 0.0;
-	double  bid_tick_avg	= 0.0;
-	double  high_tick		= DBL_MIN;
-	double  low_tick		= DBL_MAX;
-	double	range			= 0.0;
-	double  range_density	= 0.0;
-	double	sample			= 0.0;
+	double delta 	= -1.0;
+	double volume	= 0.0;
 
-	double 	delta 	= -1.0;
-	double 	volume	= 0.0;
+	double rotation_length = -1;
+
+	bool init_ts = false;
 
 	if (len_tas > 0) {
 
-		// record volumes, last price
-
-		int i 			= len_tas - 1;
 		int trade_count = 0;
 
-		while (trade_count < num_trades && i >= 0) {
+		for (int i = 0; i < len_tas; i++) {
+
+			// init
 
 			s_TimeAndSales r = tas[i];
 			r *= sc.RealTimePriceMultiplier;
+
+			if (!init_ts && r.Type != SC_TS_BIDASKVALUES) {
+
+				// first trade record, initialize everything
+
+				first_price = r.Price;
+				prev_bid 	= r.Price;
+				prev_ask	= r.Price;
+
+				init_ts = true;
+
+			}
+
+			// range, absorbtion, density, etc.
 
 			switch(r.Type) {
 
 				case SC_TS_BID:
 
 					at_bid_total	+=	r.Volume;
-					first_price		=	r.Price;
+					last_price		=	r.Price;
 					trade_count		+=	1;
 					low_tick		=	min(r.Price, low_tick);
 
-					//sc.AddMessageToLog(("cur_bid: " + std::to_string(r.Price)).c_str(), 1);
-
-					if (r.Price < prev_bid) {
+					if (r.Price < prev_bid)
 
 						bid_ticks += ((prev_bid - r.Price) / sc.TickSize);
-
-						//sc.AddMessageToLog(("prev_bid: " + std::to_string(prev_bid)).c_str(), 1);
-						//sc.AddMessageToLog(("ticks: " + std::to_string(((prev_bid - r.Price) / sc.TickSize))).c_str(), 1);
-
-					}
 
 					prev_bid = r.Price;					
 
@@ -208,7 +214,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 				case SC_TS_ASK:
 
 					at_ask_total	+= 	r.Volume;
-					first_price		=	r.Price;
+					last_price		=	r.Price;
 					trade_count		+=	1;
 					high_tick		=	max(r.Price, high_tick);
 
@@ -232,11 +238,41 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 				
 			}
 
-			if (last_price == DBL_MIN && first_price != DBL_MIN)
+			// rotations
 
-				last_price = first_price;
+			if (r.Type != SC_TS_BIDASKVALUES) {
 
-			i--;
+				rotation_high 	= max(rotation_high, r.Price);
+				rotation_low	= min(rotation_low, r.Price);
+
+				double from_rotation_high 	= (rotation_high - r.Price) / sc.TickSize;
+				double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
+
+				if (from_rotation_high >= min_rotation) {
+					
+					if (rotation_side > -1) {
+
+						rotation_side 	= -1;
+						rotation_low    = r.Price;
+
+					}
+					
+					rotation_length = max(from_rotation_high, rotation_length); 
+
+				} else if (from_rotation_low >= min_rotation) {
+
+					if (rotation_side < 1) {
+
+						rotation_side	= 1;
+						rotation_high	= r.Price;
+
+					}
+
+					rotation_length = max(from_rotation_low, rotation_length);
+
+				}
+
+			}
 
 		}
 
@@ -284,7 +320,80 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	}
 
-	// END		time and sales: delta, volume
+	// compute liquidity balance
+
+	int 	total_bids 			= 0;
+	int 	total_asks 			= 0;
+	float	liquidity_balance 	= -1.0;
+
+	s_MarketDepthEntry e;
+
+	for (int i = 0; i < liq_levels; i++) {
+
+		sc.GetBidMarketDepthEntryAtLevel(e, i);
+		total_bids += e.Quantity;
+
+		sc.GetAskMarketDepthEntryAtLevel(e, i);
+		total_asks += e.Quantity;
+
+	}
+
+	liquidity_balance = static_cast<float>(total_asks) / total_bids;
+
+	// clear spreadsheet
+
+	const int 	lo = base_row + 1;
+	int			hi = base_row + sample_row;
+	SCString 	clr = "";
+	SCString 	fmt;
+
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + liquidity_balance_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + delta_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + imbalance_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + ask_tick_avg_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + bid_tick_avg_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + range_density_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + range_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + net_ticks_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_side_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_start_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_length_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, clr);
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + sample_row, clr);
+
+	// fill spreadsheet
+
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + liquidity_balance_row, fmt.Format("%.2f", liquidity_balance));
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + delta_row, fmt.Format("%.2f", delta));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + imbalance_row, imbalance);
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + ask_tick_avg_row, static_cast<int>(ask_tick_avg));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + bid_tick_avg_row, static_cast<int>(bid_tick_avg));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_density_row, static_cast<int>(range_density));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_row, static_cast<int>(range));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, static_cast<int>(net_ticks));
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_side_row, rotation_side == 1 ? "up" : rotation_side == -1 ? "dn" : "");
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_start_row, rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : -1);
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_length_row, static_cast<int>(rotation_length));
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, fmt.Format("%.2f", volume));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
+
+}
+
+
+/*
+
+INCOMPLETE
+
+SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
+
+	/*
+
+	#define bid_lvls_col	0
+	#define bid_qtys_col   	1
+	#define bid_tics_col    2
+	#define ask_lvls_col 	3
+	#define ask_qtys_col   	4
+	#define ask_tics_col	5
 
 	// START	large order levels, liquidity balance, from high/low
 
@@ -447,25 +556,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 	}
 
-	// set stats
-
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + from_high_row, from_high);
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + from_low_row, from_low);
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + liquidity_balance_row, fmt.Format("%.2f", liquidity_balance));
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + delta_row, fmt.Format("%.2f", delta));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + ask_tick_avg_row, static_cast<int>(ask_tick_avg));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + bid_tick_avg_row, static_cast<int>(bid_tick_avg));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, static_cast<int>(net_ticks));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + imbalance_row, imbalance);
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_density_row, static_cast<int>(range_density));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_row, static_cast<int>(range));
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, fmt.Format("%.2f", volume));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
-
-	// END		spreadsheet
-
 }
-
 
 // INCOMPLETE
 
@@ -554,6 +645,9 @@ SCSFExport scsf_bond_tick(SCStudyInterfaceRef sc) {
 	sc.GetTimeAndSalesForSymbol(zt_sym, zt_tas);
 
 }
+
+*/
+
 
 SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
@@ -793,7 +887,7 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
 			// only update the latest profile after the first run.
 			// need to restart the study after a new session.
-			
+
 			break;
 	
 	}
