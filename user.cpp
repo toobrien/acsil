@@ -38,6 +38,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define rotation_side_key	2
 	#define rotation_high_key	3
 	#define rotation_low_key	4
+	#define rotation_length_key 5
+	#define ts_seq_key			6
 
 	// set defaults
 	
@@ -50,6 +52,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	int		&	rotation_side		= sc.GetPersistentInt(rotation_side_key);
 	double 	&	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
 	double 	&	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
+	double	&	rotation_length		= sc.GetPersistentDouble(rotation_length_key);
+	int		&	ts_seq				= sc.GetPersistentInt(ts_seq_key);
 
 	if (sc.SetDefaults) {
 
@@ -72,6 +76,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		rotation_side		= 0;
 		rotation_high		= DBL_MIN;
 		rotation_low		= DBL_MAX;
+		rotation_length 	= DBL_MIN;
+		ts_seq				= INT_MIN;
 
 		return;
 
@@ -163,16 +169,14 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	double delta 	= -1.0;
 	double volume	= 0.0;
 
-	double rotation_length = -1;
-
 	bool init_ts = false;
 
 	if (len_tas > 0) {
 
 		int trade_count = 0;
-		int start = max(len_tas - trades, 0);
+		// int start = max(len_tas - trades, 0);
 
-		for (int i = start; i < len_tas; i++) {
+		for (int i = 0; i < len_tas; i++) {
 
 			// init
 
@@ -241,7 +245,9 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 			// rotations
 
-			if (r.Type != SC_TS_BIDASKVALUES) {
+			if (r.Type != SC_TS_BIDASKVALUES && r.Sequence >= ts_seq) {
+
+				ts_seq			= r.Sequence;
 
 				rotation_high 	= max(rotation_high, r.Price);
 				rotation_low	= min(rotation_low, r.Price);
@@ -250,29 +256,40 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 				double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
 
 				if (from_rotation_high >= min_rotation) {
+
+					// down rotation
 					
 					if (rotation_side > -1) {
 
 						rotation_side 		= -1;
 						rotation_low 		= r.Price;
-						from_rotation_low 	= 0;			// skip subsequent if block
+						rotation_length		= from_rotation_high;
+
+						continue;			// skip subsequent if block
+
+					} else {
+					
+						rotation_length = max(from_rotation_high, rotation_length);
 
 					}
-					
-					rotation_length = max(from_rotation_high, rotation_length);
 				
 				}
 
 				if (from_rotation_low >= min_rotation) {
 
+					// up rotation
+
 					if (rotation_side < 1) {
 
 						rotation_side	= 1;
 						rotation_high	= r.Price;
+						rotation_length = from_rotation_low;
  
-					}
+					} else {
 
-					rotation_length = max(from_rotation_low, rotation_length);
+						rotation_length = max(from_rotation_low, rotation_length);
+
+					}
 
 				}
 
