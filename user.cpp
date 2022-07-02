@@ -18,6 +18,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define trades_row			1
 	#define liq_lvls_row		2
 	#define min_rotation_row	3
+	#define num_rotations_row	4
 
 	#define liquidity_balance_row	0
 	#define delta_row				1
@@ -129,14 +130,17 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	double d_trades			= -1.0;
 	double d_liq_lvls 		= -1.0;
 	double d_min_rotation	= -1.0;
+	double d_num_rotations  = -1.0;
 
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + trades_row, d_trades);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + liq_lvls_row, d_liq_lvls);
 	sc.GetSheetCellAsDouble(h, input_val_col, base_row + min_rotation_row, d_min_rotation);
+	sc.GetSheetCellAsDouble(h, input_val_col, base_row + num_rotations_row, d_num_rotations);
 
 	int trades			= static_cast<int>(d_trades);
 	int liq_levels  	= static_cast<int>(d_liq_lvls);
 	int min_rotation 	= static_cast<int>(d_min_rotation); 
+	int num_rotations   = static_cast<int>(d_num_rotations);
 	
 	c_SCTimeAndSalesArray tas;
 
@@ -376,13 +380,28 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + range_density_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + range_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + net_ticks_row, clr);
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_side_row, clr);
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_start_row, clr);
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_length_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, clr);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + sample_row, clr);
 
 	// fill spreadsheet
+
+	SCString 	d_old_rotation_side;
+	double 		d_old_rotation_start;
+	double      d_old_rotation_length;
+
+	// shift old rotations right
+
+	for (int i = 0; i < num_rotations - 1; i++) {
+
+		sc.GetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
+		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
+		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
+
+		sc.GetSheetCellAsString(h, stat_val_col + i + 1, base_row + rotation_side_row, d_old_rotation_side);
+		sc.GetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_start_row, d_old_rotation_start);
+		sc.GetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_length_row, d_old_rotation_length);
+
+	}
 
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + liquidity_balance_row, fmt.Format("%.2f", liquidity_balance));
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + delta_row, fmt.Format("%.2f", delta));
