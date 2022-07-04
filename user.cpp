@@ -48,13 +48,13 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	SCInputRef file_input	= sc.Input[1];
 	SCInputRef sheet_input	= sc.Input[2];
 
-	int		&	base_row 			= sc.GetPersistentInt(base_row_key);
-	int 	&	high_volume			= sc.GetPersistentInt(high_volume_key);
-	int		&	rotation_side		= sc.GetPersistentInt(rotation_side_key);
-	double 	&	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
-	double 	&	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
-	double	&	rotation_length		= sc.GetPersistentDouble(rotation_length_key);
-	int		&	ts_seq				= sc.GetPersistentInt(ts_seq_key);
+	int			&	base_row 			= sc.GetPersistentInt(base_row_key);
+	int 		&	high_volume			= sc.GetPersistentInt(high_volume_key);
+	int			&	rotation_side		= sc.GetPersistentInt(rotation_side_key);
+	double 		&	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
+	double 		&	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
+	double		&	rotation_length		= sc.GetPersistentDouble(rotation_length_key);
+	int 		&	ts_seq				= sc.GetPersistentInt(ts_seq_key);
 
 	if (sc.SetDefaults) {
 
@@ -78,7 +78,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		rotation_high		= DBL_MIN;
 		rotation_low		= DBL_MAX;
 		rotation_length 	= DBL_MIN;
-		ts_seq				= INT_MIN;
+		ts_seq				= 0;
 
 		return;
 
@@ -384,7 +384,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + sample_row, clr);
 
 	// fill spreadsheet
-
+	
 	SCString 	d_old_rotation_side;
 	double 		d_old_rotation_start;
 	double      d_old_rotation_length;
@@ -397,9 +397,9 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
 		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
 
-		sc.GetSheetCellAsString(h, stat_val_col + i + 1, base_row + rotation_side_row, d_old_rotation_side);
-		sc.GetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_start_row, d_old_rotation_start);
-		sc.GetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_length_row, d_old_rotation_length);
+		sc.SetSheetCellAsString(h, stat_val_col + i + 1, base_row + rotation_side_row, d_old_rotation_side);
+		sc.SetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_start_row, d_old_rotation_start);
+		sc.SetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_length_row, d_old_rotation_length);
 
 	}
 
