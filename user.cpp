@@ -173,7 +173,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	double delta 	= -1.0;
 	double volume	= 0.0;
 
-	bool init_ts = false;
+	bool init_ts 			= false;
+	bool rotation_change 	= false;
 
 	if (len_tas > 0) {
 
@@ -265,9 +266,10 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 					
 					if (rotation_side > -1) {
 
-						rotation_side 		= -1;
-						rotation_low 		= r.Price;
-						rotation_length		= from_rotation_high;
+						rotation_change	= true;
+						rotation_side 	= -1;
+						rotation_low 	= r.Price;
+						rotation_length	= from_rotation_high;
 
 						continue;			// skip subsequent if block
 
@@ -285,6 +287,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 					if (rotation_side < 1) {
 
+						rotation_change	= true;
 						rotation_side	= 1;
 						rotation_high	= r.Price;
 						rotation_length = from_rotation_low;
@@ -384,22 +387,26 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + sample_row, clr);
 
 	// fill spreadsheet
-	
-	SCString 	d_old_rotation_side;
-	double 		d_old_rotation_start;
-	double      d_old_rotation_length;
 
-	// shift old rotations right
+	if (rotation_change) {
 
-	for (int i = 0; i < num_rotations - 1; i++) {
+		// shift old rotations right on change
 
-		sc.GetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
-		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
-		sc.GetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
+		SCString 	d_old_rotation_side;
+		double 		d_old_rotation_start;
+		double      d_old_rotation_length;
 
-		sc.SetSheetCellAsString(h, stat_val_col + i + 1, base_row + rotation_side_row, d_old_rotation_side);
-		sc.SetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_start_row, d_old_rotation_start);
-		sc.SetSheetCellAsDouble(h, stat_val_col + i + 1, base_row + rotation_length_row, d_old_rotation_length);
+		for (int i = num_rotations - 1; i > 0; i--) {
+
+			sc.GetSheetCellAsString(h, stat_val_col + i - 1, base_row + rotation_side_row, d_old_rotation_side);
+			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_start_row, d_old_rotation_start);
+			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_length_row, d_old_rotation_length);
+
+			sc.SetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
+			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
+			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
+
+		}
 
 	}
 
