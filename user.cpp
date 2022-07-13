@@ -610,7 +610,7 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 // for bond rngs (INCOMPLETE)
 
-#define PRICE_SCALE 100000
+#define PRICE_SCALE 1000000
 
 void bond_rngs_set_rng(
 	const SCStudyInterfaceRef & 	sc,
@@ -626,7 +626,7 @@ void bond_rngs_set_rng(
 
 	sc.GetBidMarketDepthEntryAtLevelForSymbol(sym, de, 0);
 
-	const int bid = de.AdjustedPrice * PRICE_SCALE;
+	const int bid = static_cast<int>(de.AdjustedPrice * PRICE_SCALE);
 
 	if (bid_map->find(base_bid) == bid_map->end())
 
@@ -643,7 +643,7 @@ void bond_rngs_set_rng(
 
 	sc.GetAskMarketDepthEntryAtLevelForSymbol(sym, de, 0);
 
-	const int ask = de.AdjustedPrice * PRICE_SCALE;
+	const int ask = static_cast<int>(de.AdjustedPrice * PRICE_SCALE);
 
 	if (ask_map->find(base_ask) == ask_map->end())
 
@@ -795,6 +795,8 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsDouble(h, 3, 2, static_cast<float>(zf_asks->find(base_ask)->second) / PRICE_SCALE);
 	sc.SetSheetCellAsDouble(h, 4, 1, static_cast<float>(zt_bids->find(base_bid)->second) / PRICE_SCALE);
 	sc.SetSheetCellAsDouble(h, 4, 2, static_cast<float>(zt_asks->find(base_ask)->second) / PRICE_SCALE);
+
+	// output to dom using subgraph line label?
 
 }
 
