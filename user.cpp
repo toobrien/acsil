@@ -34,13 +34,15 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define volume_row				11
 	#define sample_row				12
 
-	#define base_row_key		0
-	#define high_volume_key		1
-	#define rotation_side_key	2
-	#define rotation_high_key	3
-	#define rotation_low_key	4
-	#define rotation_length_key 5
-	#define ts_seq_key			6
+	#define base_row_key			0
+	#define high_volume_key			1
+	#define rotation_side_key		2
+	#define rotation_high_key		3
+	#define rotation_low_key		4
+	#define rotation_length_key		5
+	#define up_rotation_delta_key 	6
+	#define dn_rotation_delta_key 	7
+	#define ts_seq_key				8
 
 	// set defaults
 	
@@ -48,13 +50,15 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	SCInputRef file_input	= sc.Input[1];
 	SCInputRef sheet_input	= sc.Input[2];
 
-	int			&	base_row 			= sc.GetPersistentInt(base_row_key);
-	int 		&	high_volume			= sc.GetPersistentInt(high_volume_key);
-	int			&	rotation_side		= sc.GetPersistentInt(rotation_side_key);
-	double 		&	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
-	double 		&	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
-	double		&	rotation_length		= sc.GetPersistentDouble(rotation_length_key);
-	int 		&	ts_seq				= sc.GetPersistentInt(ts_seq_key);
+	int	&		base_row 			= sc.GetPersistentInt(base_row_key);
+	int &		high_volume			= sc.GetPersistentInt(high_volume_key);
+	int	&		rotation_side		= sc.GetPersistentInt(rotation_side_key);
+	double &	rotation_high		= sc.GetPersistentDouble(rotation_high_key);
+	double &	rotation_low		= sc.GetPersistentDouble(rotation_low_key);
+	double &	rotation_length		= sc.GetPersistentDouble(rotation_length_key);
+	int &		ts_seq				= sc.GetPersistentInt(ts_seq_key);
+	int	&		up_rotation_delta 	= sc.GetPersistentInt(up_rotation_delta_key);
+	int	&		dn_rotation_delta 	= sc.GetPersistentInt(up_rotation_delta_key);
 
 	if (sc.SetDefaults) {
 
@@ -78,6 +82,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		rotation_high		= DBL_MIN;
 		rotation_low		= DBL_MAX;
 		rotation_length 	= DBL_MIN;
+		up_rotation_delta   = 0;
+		dn_rotation_delta	= 0;
 		ts_seq				= 0;
 
 		return;
@@ -260,45 +266,56 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 				double from_rotation_high 	= (rotation_high - r.Price) / sc.TickSize;
 				double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
 
+				int volume = r.Type == SC_TS_BID ? -r.Volume : r.Volume;
+
 				if (from_rotation_high >= min_rotation) {
 
-					// down rotation
+					// in down rotation
 					
 					if (rotation_side > -1) {
 
-						rotation_change	= true;
-						rotation_side 	= -1;
-						rotation_low 	= r.Price;
-						rotation_length	= from_rotation_high;
+						// from up rotation
+
+						rotation_change		= true;
+						rotation_side 		= -1;
+						rotation_low 		= r.Price;
+						rotation_length		= from_rotation_high;
+						up_rotation_delta 	= 0;
 
 						continue;			// skip subsequent if block
 
-					} else {
+					} else
 					
-						rotation_length = max(from_rotation_high, rotation_length);
+						// continuing down rotation
 
-					}
+						rotation_length = max(from_rotation_high, rotation_length);
 				
 				}
 
 				if (from_rotation_low >= min_rotation) {
 
-					// up rotation
+					// in up rotation
 
 					if (rotation_side < 1) {
 
-						rotation_change	= true;
-						rotation_side	= 1;
-						rotation_high	= r.Price;
-						rotation_length = from_rotation_low;
+						// from down rotation
+
+						rotation_change		= true;
+						rotation_side		= 1;
+						rotation_high		= r.Price;
+						rotation_length 	= from_rotation_low;
+						dn_rotation_delta 	= 0;
  
-					} else {
+					} else
+
+						// continuing up rotation
 
 						rotation_length = max(from_rotation_low, rotation_length);
 
-					}
-
 				}
+
+				up_rotation_delta += volume;
+				dn_rotation_delta += volume;
 
 			}
 
