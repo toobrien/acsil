@@ -641,7 +641,7 @@ void bond_rngs_set_rng(
 
 	// ask
 
-	sc.GetBidMarketDepthEntryAtLevelForSymbol(sym, de, 0);
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(sym, de, 0);
 
 	const int ask = de.AdjustedPrice * PRICE_SCALE;
 
