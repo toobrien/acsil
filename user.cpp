@@ -31,8 +31,9 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define rotation_side_row		8
 	#define rotation_start_row		9
 	#define rotation_length_row		10
-	#define volume_row				11
-	#define sample_row				12
+	#define rotation_delta_row		11
+	#define volume_row				12
+	#define sample_row				13
 
 	#define base_row_key			0
 	#define high_volume_key			1
@@ -412,12 +413,14 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		SCString 	d_old_rotation_side;
 		double 		d_old_rotation_start;
 		double      d_old_rotation_length;
+		double      d_old_rotation_delta;
 
 		for (int i = num_rotations - 1; i > 0; i--) {
 
 			sc.GetSheetCellAsString(h, stat_val_col + i - 1, base_row + rotation_side_row, d_old_rotation_side);
 			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_start_row, d_old_rotation_start);
 			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_length_row, d_old_rotation_length);
+			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_delta_row, d_old_rotation_delta);
 
 			sc.SetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
@@ -438,6 +441,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_side_row, rotation_side == 1 ? "up" : rotation_side == -1 ? "dn" : "");
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_start_row, rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : -1);
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_length_row, static_cast<int>(rotation_length));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_delta_row, rotation_side == 1 ? up_rotation_delta : dn_rotation_delta);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, fmt.Format("%.2f", volume));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
 
