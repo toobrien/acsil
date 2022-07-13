@@ -605,28 +605,73 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 }
 
-// INCOMPLETE
+*/
 
-SCSFExport scsf_bond_tick(SCStudyInterfaceRef sc) {
-	
-	#define zb_idx	0
-	#define	zn_idx	1
-	#define zf_idx	2
-	#define zt_idx  3
 
-	SCInputRef sheet_name_input		= sc.Input[1];
-	SCInputRef base_symbol_input	= sc.Input[2];	// ZN, ZF, etc...
-	SCInputRef month_year_input		= sc.Input[0];	// MYY
+// for bond rngs (INCOMPLETE)
+
+#define PRICE_SCALE 100000
+
+void bond_rngs_set_rng(
+	const SCStudyInterfaceRef & 	sc,
+	const SCString & 				sym,
+	const int & 					base_bid,
+	const int &						base_ask,
+	s_MarketDepthEntry & 			de, 
+	std::map<int, int> * const 		bid_map,
+	std::map<int, int> * const		ask_map
+) {
+
+	// bid
+
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(sym, de, 0);
+
+	const int bid = de.AdjustedPrice * PRICE_SCALE;
+
+	if (!bid_map->contains(base_bid))
+
+		bid_map->insert({ base_bid, INT_MAX });
+
+	const int lo_bid = bid_map.find(base_bid);
+
+	if (bid < lo_bid)
+
+		bid_map->insert(base_bid, bid);
+
+	// ask
+
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(sym, de, 0);
+
+	const int ask = de.AdjustedPrice * PRICE_SCALE;
+
+	if (!ask_map->contains(base_ask))
+
+		ask_map->insert({ base_ask, INT_MIN });
+
+	const int hi_ask = ask_map.find(base_ask);
+
+	if (ask > hi_ask)
+
+		ask_map->insert(base_ask, ask);
+
+}
+
+
+SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
+
+	SCInputRef debug_sheet_input	= sc.Input[0];
+	SCInputRef base_symbol_input	= sc.Input[1];	// ZN, ZF, etc...
+	SCInputRef month_year_input		= sc.Input[2];	// MYY
 
 	if (sc.SetDefaults) {
 
-		sc.GraphName 			= "tick_ranges";
+		sc.GraphName 			= "bond_rngs";
 		sc.AutoLoop 			= 0;
-		// sc.UsesMarketDepthData 	= 1;
+		sc.UsesMarketDepthData 	= 1;
 		sc.HideStudy 			= 1;
 
-		sheet_name_input.Name = "sheet_name";
-		sheet_name_input.SetString("");
+		debug_sheet_input.Name = "sheet_name";
+		debug_sheet_input.SetString("");
 
 		base_symbol_input.Name = "base_symbol";
 		base_symbol_input.SetString("");
@@ -638,28 +683,44 @@ SCSFExport scsf_bond_tick(SCStudyInterfaceRef sc) {
 		
 	}
 
-	const char * 	sheet_name		= sheet_name_input.GetString();
-	const char * 	base_symbol		= base_symbol_input.GetString();
-	const char * 	month_year		= month_year_input.GetString();
-	SCString 		clr				= "";
+	SCString 		fmt;
+	const char * 	debug_sheet			= debug_sheet_input.GetString();
+	const char * 	month_year			= month_year_input.GetString();
+	const char * 	base_symbol			= fmt.Format("%S%S_FUT_CME", base_symbol_input.GetString(), month_year);
+	SCString 		clr					= "";
 
 	if (
-		!clr.Compare(sheet_name) 	||
 		!clr.Compare(base_symbol)	||
 		!clr.Compare(month_year)
 	)
 
-		// user has not initialized study
+		// base symbol should be one of ZB, ZN, ZT, or ZF
+		// month year is, e.g., U2022
 
 		return;
 
-	std::map<double, double>* tick_ranges = reinterpret_cast<std::map<double, double>*>(sc.GetPersistentPointer(0));
+	std::map<int, int> * zb_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(0));
+	std::map<int, int> * zb_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(1));
+	std::map<int, int> * zn_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(2));
+	std::map<int, int> * zn_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(3));
+	std::map<int, int> * zf_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(4));
+	std::map<int, int> * zf_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(5));
+	std::map<int, int> * zt_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(6));
+	std::map<int, int> * zt_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(7));
 
 	if (sc.LastCallToFunction) {
 
 		if (tick_ranges != NULL) {
 
-			delete tick_ranges;
+			delete zb_bids;
+			delete zb_asks;
+			delete zn_bids;
+			delete zn_asks;
+			delete zf_bids;
+			delete zf_asks;
+			delete zt_bids;
+			delete zt_asks;
+
 			sc.SetPersistentPointer(0, NULL);
 
 		}
@@ -668,11 +729,18 @@ SCSFExport scsf_bond_tick(SCStudyInterfaceRef sc) {
 
 	}
 
-	if (tick_ranges == NULL)
+	if (zb_rngs == NULL) {
 
-		tick_ranges = new std::map<double, double>();
+		zb_bids = new std::map<int, int>();
+		zb_asks = new std::map<int, int>();
+		zn_bids = new std::map<int, int>();
+		zn_asks = new std::map<int, int>();
+		zf_bids = new std::map<int, int>();
+		zf_asks = new std::map<int, int>();
+		zt_bids = new std::map<int, int>();
+		zt_asks = new std::map<int, int>();
 
-	void * h = sc.GetSpreadsheetSheetHandleByName("bonds", sheet_name, false);
+	}
 
 	SCString fmt;
 
@@ -681,19 +749,51 @@ SCSFExport scsf_bond_tick(SCStudyInterfaceRef sc) {
 	SCString zf_sym = fmt.Format("ZF%S_FUT_CME", month_year);
 	SCString zt_sym = fmt.Format("ZT%S_FUT_CME", month_year);
 
-	c_SCTimeAndSalesArray zb_tas;
-	c_SCTimeAndSalesArray zn_tas;
-	c_SCTimeAndSalesArray zf_tas;
-	c_SCTimeAndSalesArray zt_tas;
+	SCString selected_sym = fmt.Format("%S%S_FUT_CME", base_symbol, month_year);
+	
+	if (
+		!base_symbol.compare(zb_sym) ||
+		!base_symbol.compare(zn_sym) ||
+		!base_symbol.compare(zf_sym) ||
+		!base_symbol.compare(zt_sym)
+	)
 
-	sc.GetTimeAndSalesForSymbol(zb_sym, zb_tas);
-	sc.GetTimeAndSalesForSymbol(zn_sym, zn_tas);
-	sc.GetTimeAndSalesForSymbol(zf_sym, zf_tas);
-	sc.GetTimeAndSalesForSymbol(zt_sym, zt_tas);
+		// not properly initialized
+		// base symbol input should be "ZB", "ZN", "ZF", or "ZT"
+
+		return;
+
+	s_MarketDepthEntry de;
+
+	const int base_bid = static_cast<int>(sc.GetBidMarketDepthEntryAtLevelForSymbol(base_sym, de, 0) * PRICE_SCALE);
+	const int base_ask = static_cast<int>(sc.GetAskMarketDepthEntryAtLevelForSymbol(base_sym, de, 0) * PRICE_SCALE);
+
+	bond_rngs_set_rng(sc, zb_sym, base_bid, base_ask, de, zb_bids, zb_asks);
+	bond_rngs_set_rng(sc, zn_sym, base_bid, base_ask, de, zn_bids, zn_asks);
+	bond_rngs_set_rng(sc, zf_sym, base_bid, base_ask, de, zf_bids, zf_asks);
+	bond_rngs_set_rng(sc, zt_sym, base_bid, base_ask, de, zt_bids, zt_asks);
+
+	// debug
+	
+	void * h = sc.GetSpreadsheetSheetHandleByName("bond_rngs_debug", sheet_name, false);
+
+	for (int i = 0; i < 8; i++) {
+	
+		sc.SetSheetCellAsString(h, i, 1, clr);
+		sc.SetSheetCellAsString(h, i, 2, clr);
+
+	}
+
+	sc.SetSheetCellAsDouble(h, 0, 1, static_cast<float>(zb_bids->find(base_bid)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 1, 2, static_cast<float>(zb_asks->find(base_ask)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 2, 1, static_cast<float>(zn_bids->find(base_bid)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 3, 2, static_cast<float>(zn_asks->find(base_ask)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 4, 1, static_cast<float>(zf_bids->find(base_bid)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 5, 2, static_cast<float>(zf_asks->find(base_ask)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 6, 1, static_cast<float>(zt_bids->find(base_bid)) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 7, 2, static_cast<float>(zt_asks->find(base_ask)) / PRICE_SCALE);
 
 }
-
-*/
 
 
 SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
