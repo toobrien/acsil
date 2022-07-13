@@ -69,7 +69,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		file_input.Name = "file_name";
 		file_input.SetString("");
 
-		sheet_input.Name = "sheet_name";
+		sheet_input.Name = "debug_sheet";
 		sheet_input.SetString("");
 		
 		base_row 			= -1;
@@ -90,8 +90,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	const char * sheet_name = sheet_input.GetString();
 
 	if (
-		!std::strcmp(file_name, "")		||
-		!std::strcmp(sheet_name, "")
+		std::strcmp(file_name, "")	 == 0 ||
+		std::strcmp(sheet_name, "") == 0
 	)
 
 		// user has not initialized the spreadsheet inputs
@@ -628,15 +628,16 @@ void bond_rngs_set_rng(
 
 	const int bid = de.AdjustedPrice * PRICE_SCALE;
 
-	if (!bid_map->contains(base_bid))
+	if (bid_map->find(base_bid) == bid_map->end())
 
 		bid_map->insert({ base_bid, INT_MAX });
 
-	const int lo_bid = bid_map.find(base_bid);
+	int & lo_bid = bid_map->find(base_bid)->second;
 
 	if (bid < lo_bid)
 
-		bid_map->insert(base_bid, bid);
+		lo_bid = bid;
+
 
 	// ask
 
@@ -644,15 +645,15 @@ void bond_rngs_set_rng(
 
 	const int ask = de.AdjustedPrice * PRICE_SCALE;
 
-	if (!ask_map->contains(base_ask))
+	if (ask_map->find(base_ask) == ask_map->end())
 
 		ask_map->insert({ base_ask, INT_MIN });
 
-	const int hi_ask = ask_map.find(base_ask);
+	int & hi_ask = ask_map->find(base_ask)->second;
 
 	if (ask > hi_ask)
 
-		ask_map->insert(base_ask, ask);
+		hi_ask = ask;
 
 }
 
@@ -670,7 +671,7 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 		sc.UsesMarketDepthData 	= 1;
 		sc.HideStudy 			= 1;
 
-		debug_sheet_input.Name = "sheet_name";
+		debug_sheet_input.Name = "debug_sheet";
 		debug_sheet_input.SetString("");
 
 		base_symbol_input.Name = "base_symbol";
@@ -684,18 +685,22 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 	}
 
 	SCString 		fmt;
+
 	const char * 	debug_sheet			= debug_sheet_input.GetString();
 	const char * 	month_year			= month_year_input.GetString();
-	const char * 	base_symbol			= fmt.Format("%S%S_FUT_CME", base_symbol_input.GetString(), month_year);
+	SCString 		base_symbol			= fmt.Format("%s%s_FUT_CME", base_symbol_input.GetString(), month_year);
 	SCString 		clr					= "";
 
+	// sc.AddMessageToLog(base_symbol.GetChars(), 1);
+	// sc.AddMessageToLog(month_year, 1);
+
 	if (
-		!clr.Compare(base_symbol)	||
-		!clr.Compare(month_year)
+		clr.Compare(base_symbol) 		== 0 ||
+		std::strcmp(month_year, "")  	== 0
 	)
 
 		// base symbol should be one of ZB, ZN, ZT, or ZF
-		// month year is, e.g., U2022
+		// month year is like U22
 
 		return;
 
@@ -710,7 +715,7 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	if (sc.LastCallToFunction) {
 
-		if (tick_ranges != NULL) {
+		if (zb_bids != NULL) {
 
 			delete zb_bids;
 			delete zb_asks;
@@ -729,7 +734,7 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	}
 
-	if (zb_rngs == NULL) {
+	if (zb_bids == NULL) {
 
 		zb_bids = new std::map<int, int>();
 		zb_asks = new std::map<int, int>();
@@ -742,20 +747,16 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	}
 
-	SCString fmt;
+	SCString zb_sym = fmt.Format("ZB%s_FUT_CME", month_year);
+	SCString zn_sym = fmt.Format("ZN%s_FUT_CME", month_year);
+	SCString zf_sym = fmt.Format("ZF%s_FUT_CME", month_year);
+	SCString zt_sym = fmt.Format("ZT%s_FUT_CME", month_year);
 
-	SCString zb_sym = fmt.Format("ZB%S_FUT_CME", month_year);
-	SCString zn_sym = fmt.Format("ZN%S_FUT_CME", month_year);
-	SCString zf_sym = fmt.Format("ZF%S_FUT_CME", month_year);
-	SCString zt_sym = fmt.Format("ZT%S_FUT_CME", month_year);
-
-	SCString selected_sym = fmt.Format("%S%S_FUT_CME", base_symbol, month_year);
-	
 	if (
-		!base_symbol.compare(zb_sym) ||
-		!base_symbol.compare(zn_sym) ||
-		!base_symbol.compare(zf_sym) ||
-		!base_symbol.compare(zt_sym)
+		base_symbol.Compare(zb_sym) != 0 &&
+		base_symbol.Compare(zn_sym) != 0 &&
+		base_symbol.Compare(zf_sym) != 0 &&
+		base_symbol.Compare(zt_sym) != 0
 	)
 
 		// not properly initialized
@@ -765,8 +766,8 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	s_MarketDepthEntry de;
 
-	const int base_bid = static_cast<int>(sc.GetBidMarketDepthEntryAtLevelForSymbol(base_sym, de, 0) * PRICE_SCALE);
-	const int base_ask = static_cast<int>(sc.GetAskMarketDepthEntryAtLevelForSymbol(base_sym, de, 0) * PRICE_SCALE);
+	const int base_bid = static_cast<int>(sc.GetBidMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0) * PRICE_SCALE);
+	const int base_ask = static_cast<int>(sc.GetAskMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0) * PRICE_SCALE);
 
 	bond_rngs_set_rng(sc, zb_sym, base_bid, base_ask, de, zb_bids, zb_asks);
 	bond_rngs_set_rng(sc, zn_sym, base_bid, base_ask, de, zn_bids, zn_asks);
@@ -775,23 +776,25 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	// debug
 	
-	void * h = sc.GetSpreadsheetSheetHandleByName("bond_rngs_debug", sheet_name, false);
+	void * h = sc.GetSpreadsheetSheetHandleByName(debug_sheet, "Sheet1", false);
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 1; i < 5; i++) {
 	
 		sc.SetSheetCellAsString(h, i, 1, clr);
 		sc.SetSheetCellAsString(h, i, 2, clr);
 
 	}
 
-	sc.SetSheetCellAsDouble(h, 0, 1, static_cast<float>(zb_bids->find(base_bid)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 1, 2, static_cast<float>(zb_asks->find(base_ask)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 2, 1, static_cast<float>(zn_bids->find(base_bid)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 3, 2, static_cast<float>(zn_asks->find(base_ask)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 4, 1, static_cast<float>(zf_bids->find(base_bid)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 5, 2, static_cast<float>(zf_asks->find(base_ask)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 6, 1, static_cast<float>(zt_bids->find(base_bid)) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 7, 2, static_cast<float>(zt_asks->find(base_ask)) / PRICE_SCALE);
+	sc.SetSheetCellAsString(h, 0, 0, base_symbol);
+
+	sc.SetSheetCellAsDouble(h, 1, 1, static_cast<float>(zb_bids->find(base_bid)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 1, 2, static_cast<float>(zb_asks->find(base_ask)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 2, 1, static_cast<float>(zn_bids->find(base_bid)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 2, 2, static_cast<float>(zn_asks->find(base_ask)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 3, 1, static_cast<float>(zf_bids->find(base_bid)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 3, 2, static_cast<float>(zf_asks->find(base_ask)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 4, 1, static_cast<float>(zt_bids->find(base_bid)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 4, 2, static_cast<float>(zt_asks->find(base_ask)->second) / PRICE_SCALE);
 
 }
 
