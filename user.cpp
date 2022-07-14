@@ -425,6 +425,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 			sc.SetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
+			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_delta_row, d_old_rotation_delta);
 
 		}
 
