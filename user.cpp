@@ -257,7 +257,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 			// rotations
 
-			if (r.Type != SC_TS_BIDASKVALUES && r.Sequence >= ts_seq) {
+			if (r.Type != SC_TS_BIDASKVALUES && r.Sequence > ts_seq) {
 
 				ts_seq			= r.Sequence;
 
