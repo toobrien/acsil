@@ -74,7 +74,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		file_input.Name = "file_name";
 		file_input.SetString("");
 
-		sheet_input.Name = "debug_sheet";
+		sheet_input.Name = "sheet_name";
 		sheet_input.SetString("");
 		
 		base_row 			= -1;
