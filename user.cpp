@@ -632,29 +632,27 @@ SCSFExport scsf_large_orders(SCStudyInterfaceRef sc) {
 
 // for bond rngs (INCOMPLETE)
 
-#define PRICE_SCALE 1000000
-
 void bond_rngs_set_rng(
-	const SCStudyInterfaceRef & 	sc,
-	const SCString & 				sym,
-	const int & 					base_bid,
-	const int &						base_ask,
-	s_MarketDepthEntry & 			de, 
-	std::map<int, int> * const 		bid_map,
-	std::map<int, int> * const		ask_map
+	const SCStudyInterfaceRef & 		sc,
+	const SCString & 					sym,
+	const float & 						base_bid,
+	const float &						base_ask,
+	s_MarketDepthEntry & 				de, 
+	std::map<float, float> * const 		bid_map,
+	std::map<float, float> * const		ask_map
 ) {
 
 	// bid
 
 	sc.GetBidMarketDepthEntryAtLevelForSymbol(sym, de, 0);
 
-	const int bid = static_cast<int>(de.AdjustedPrice * PRICE_SCALE);
+	const float bid = de.AdjustedPrice;
 
 	if (bid_map->find(base_bid) == bid_map->end())
 
-		bid_map->insert({ base_bid, INT_MAX });
+		bid_map->insert({ base_bid, DBL_MAX });
 
-	int & lo_bid = bid_map->find(base_bid)->second;
+	float & lo_bid = bid_map->find(base_bid)->second;
 
 	if (bid < lo_bid)
 
@@ -665,13 +663,13 @@ void bond_rngs_set_rng(
 
 	sc.GetAskMarketDepthEntryAtLevelForSymbol(sym, de, 0);
 
-	const int ask = static_cast<int>(de.AdjustedPrice * PRICE_SCALE);
+	const float ask = de.AdjustedPrice;
 
 	if (ask_map->find(base_ask) == ask_map->end())
 
 		ask_map->insert({ base_ask, INT_MIN });
 
-	int & hi_ask = ask_map->find(base_ask)->second;
+	float & hi_ask = ask_map->find(base_ask)->second;
 
 	if (ask > hi_ask)
 
@@ -726,14 +724,14 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 		return;
 
-	std::map<int, int> * zb_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(0));
-	std::map<int, int> * zb_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(1));
-	std::map<int, int> * zn_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(2));
-	std::map<int, int> * zn_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(3));
-	std::map<int, int> * zf_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(4));
-	std::map<int, int> * zf_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(5));
-	std::map<int, int> * zt_bids = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(6));
-	std::map<int, int> * zt_asks = reinterpret_cast<std::map<int, int>*>(sc.GetPersistentPointer(7));
+	std::map<float, float> * zb_bids = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(0));
+	std::map<float, float> * zb_asks = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(1));
+	std::map<float, float> * zn_bids = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(2));
+	std::map<float, float> * zn_asks = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(3));
+	std::map<float, float> * zf_bids = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(4));
+	std::map<float, float> * zf_asks = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(5));
+	std::map<float, float> * zt_bids = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(6));
+	std::map<float, float> * zt_asks = reinterpret_cast<std::map<float, float>*>(sc.GetPersistentPointer(7));
 
 	if (sc.LastCallToFunction) {
 
@@ -758,14 +756,14 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	if (zb_bids == NULL) {
 
-		zb_bids = new std::map<int, int>();
-		zb_asks = new std::map<int, int>();
-		zn_bids = new std::map<int, int>();
-		zn_asks = new std::map<int, int>();
-		zf_bids = new std::map<int, int>();
-		zf_asks = new std::map<int, int>();
-		zt_bids = new std::map<int, int>();
-		zt_asks = new std::map<int, int>();
+		zb_bids = new std::map<float, float>();
+		zb_asks = new std::map<float, float>();
+		zn_bids = new std::map<float, float>();
+		zn_asks = new std::map<float, float>();
+		zf_bids = new std::map<float, float>();
+		zf_asks = new std::map<float, float>();
+		zt_bids = new std::map<float, float>();
+		zt_asks = new std::map<float, float>();
 
 	}
 
@@ -788,8 +786,11 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	s_MarketDepthEntry de;
 
-	const int base_bid = static_cast<int>(sc.GetBidMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0) * PRICE_SCALE);
-	const int base_ask = static_cast<int>(sc.GetAskMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0) * PRICE_SCALE);
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0);
+	const float base_bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(base_symbol, de, 0);
+	const float base_ask = de.AdjustedPrice;
 
 	bond_rngs_set_rng(sc, zb_sym, base_bid, base_ask, de, zb_bids, zb_asks);
 	bond_rngs_set_rng(sc, zn_sym, base_bid, base_ask, de, zn_bids, zn_asks);
@@ -809,14 +810,14 @@ SCSFExport scsf_bond_rngs(SCStudyInterfaceRef sc) {
 
 	sc.SetSheetCellAsString(h, 0, 0, base_symbol);
 
-	sc.SetSheetCellAsDouble(h, 1, 1, static_cast<float>(zb_bids->find(base_bid)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 1, 2, static_cast<float>(zb_asks->find(base_ask)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 2, 1, static_cast<float>(zn_bids->find(base_bid)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 2, 2, static_cast<float>(zn_asks->find(base_ask)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 3, 1, static_cast<float>(zf_bids->find(base_bid)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 3, 2, static_cast<float>(zf_asks->find(base_ask)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 4, 1, static_cast<float>(zt_bids->find(base_bid)->second) / PRICE_SCALE);
-	sc.SetSheetCellAsDouble(h, 4, 2, static_cast<float>(zt_asks->find(base_ask)->second) / PRICE_SCALE);
+	sc.SetSheetCellAsDouble(h, 1, 1, zb_bids->find(base_bid)->second);
+	sc.SetSheetCellAsDouble(h, 1, 2, zb_asks->find(base_ask)->second);
+	sc.SetSheetCellAsDouble(h, 2, 1, zn_bids->find(base_bid)->second);
+	sc.SetSheetCellAsDouble(h, 2, 2, zn_asks->find(base_ask)->second);
+	sc.SetSheetCellAsDouble(h, 3, 1, zf_bids->find(base_bid)->second);
+	sc.SetSheetCellAsDouble(h, 3, 2, zf_asks->find(base_ask)->second);
+	sc.SetSheetCellAsDouble(h, 4, 1, zt_bids->find(base_bid)->second);
+	sc.SetSheetCellAsDouble(h, 4, 2, zt_asks->find(base_ask)->second);
 
 	// output to dom using subgraph line label?
 
@@ -1064,6 +1065,6 @@ SCSFExport scsf_tpo_to_spreadsheet(SCStudyInterfaceRef sc) {
 
 			break;
 	
-	}
 
+	}
 }
