@@ -28,12 +28,13 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define range_density_row		5
 	#define range_row				6
 	#define net_ticks_row			7
-	#define rotation_side_row		8
-	#define rotation_start_row		9
-	#define rotation_length_row		10
-	#define rotation_delta_row		11
-	#define volume_row				12
-	#define sample_row				13
+	#define volume_row				8
+	#define sample_row				9
+	#define rotation_side_row		10
+	#define rotation_start_row		11
+	#define rotation_length_row		12
+	#define rotation_delta_row		13
+	#define rotation_volume_row     14
 
 	#define base_row_key			0
 	#define high_volume_key			1
@@ -43,7 +44,9 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	#define rotation_length_key		5
 	#define up_rotation_delta_key 	6
 	#define dn_rotation_delta_key 	7
-	#define ts_seq_key				8
+	#define up_rotation_volume_key	8
+	#define dn_rotation_volume_key	9
+	#define ts_seq_key				10
 
 	// set defaults
 	
@@ -60,6 +63,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	int &		ts_seq				= sc.GetPersistentInt(ts_seq_key);
 	int	&		up_rotation_delta 	= sc.GetPersistentInt(up_rotation_delta_key);
 	int	&		dn_rotation_delta 	= sc.GetPersistentInt(up_rotation_delta_key);
+	int &		up_rotation_volume	= sc.GetPersistentInt(up_rotation_volume_key);
+	int &		dn_rotation_volume  = sc.GetPersistentInt(dn_rotation_volume_key);
 
 	if (sc.SetDefaults) {
 
@@ -85,6 +90,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		rotation_length 	= DBL_MIN;
 		up_rotation_delta   = 0;
 		dn_rotation_delta	= 0;
+		up_rotation_volume	= 0;
+		dn_rotation_volume  = 0;
 		ts_seq				= 0;
 
 		return;
@@ -97,8 +104,8 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	const char * sheet_name = sheet_input.GetString();
 
 	if (
-		std::strcmp(file_name, "")	 == 0 ||
-		std::strcmp(sheet_name, "") == 0
+		std::strcmp(file_name, "")	== 0 ||
+		std::strcmp(sheet_name, "")	== 0
 	)
 
 		// user has not initialized the spreadsheet inputs
@@ -261,13 +268,27 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 				ts_seq			= r.Sequence;
 
-				rotation_high 	= max(rotation_high, r.Price);
-				rotation_low	= min(rotation_low, r.Price);
+				if (r.Price > rotation_high) {
+
+					rotation_high 		= r.Price;
+					dn_rotation_delta 	= 0;
+					dn_rotation_volume	= 0;
+
+				}
+
+				if (r.Price < rotation_low) {
+
+					rotation_low 		= r.Price;
+					up_rotation_delta	= 0;
+					up_rotation_volume	= 0;
+
+				}
+				
+				// rotation_high 	= max(rotation_high, r.Price);
+				// rotation_low	= min(rotation_low, r.Price);
 
 				double from_rotation_high 	= (rotation_high - r.Price) / sc.TickSize;
 				double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
-
-				int volume = r.Type == SC_TS_BID ? -r.Volume : r.Volume;
 
 				if (from_rotation_high >= min_rotation) {
 
@@ -281,7 +302,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 						rotation_side 		= -1;
 						rotation_low 		= r.Price;
 						rotation_length		= from_rotation_high;
-						up_rotation_delta 	= 0;
+						// up_rotation_delta 	= 0;
 
 						continue;			// skip subsequent if block
 
@@ -305,7 +326,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 						rotation_side		= 1;
 						rotation_high		= r.Price;
 						rotation_length 	= from_rotation_low;
-						dn_rotation_delta 	= 0;
+						// dn_rotation_delta 	= 0;
  
 					} else
 
@@ -315,8 +336,12 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 				}
 
-				up_rotation_delta += volume;
-				dn_rotation_delta += volume;
+				int signed_volume = r.Type == SC_TS_BID ? -r.Volume : r.Volume;
+
+				up_rotation_delta 	+= signed_volume;
+				up_rotation_volume 	+= r.Volume;
+				dn_rotation_delta 	+= signed_volume;
+				dn_rotation_volume  += r.Volume;
 
 			}
 
@@ -414,6 +439,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 		double 		d_old_rotation_start;
 		double      d_old_rotation_length;
 		double      d_old_rotation_delta;
+		double 		d_old_rotation_volume;
 
 		for (int i = num_rotations - 1; i > 0; i--) {
 
@@ -421,11 +447,13 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_start_row, d_old_rotation_start);
 			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_length_row, d_old_rotation_length);
 			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_delta_row, d_old_rotation_delta);
+			sc.GetSheetCellAsDouble(h, stat_val_col + i - 1, base_row + rotation_volume_row, d_old_rotation_volume);
 
 			sc.SetSheetCellAsString(h, stat_val_col + i, base_row + rotation_side_row, d_old_rotation_side);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_start_row, d_old_rotation_start);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_length_row, d_old_rotation_length);
 			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_delta_row, d_old_rotation_delta);
+			sc.SetSheetCellAsDouble(h, stat_val_col + i, base_row + rotation_volume_row, d_old_rotation_volume);
 
 		}
 
@@ -439,12 +467,13 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_density_row, static_cast<int>(range_density));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + range_row, static_cast<int>(range));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + net_ticks_row, static_cast<int>(net_ticks));
+	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, fmt.Format("%.2f", volume));
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
 	sc.SetSheetCellAsString(h, stat_val_col, base_row + rotation_side_row, rotation_side == 1 ? "up" : rotation_side == -1 ? "dn" : "");
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_start_row, rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : -1);
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_length_row, static_cast<int>(rotation_length));
 	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_delta_row, rotation_side == 1 ? up_rotation_delta : dn_rotation_delta);
-	sc.SetSheetCellAsString(h, stat_val_col, base_row + volume_row, fmt.Format("%.2f", volume));
-	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + sample_row, sample);
+	sc.SetSheetCellAsDouble(h, stat_val_col, base_row + rotation_volume_row, rotation_side == 1 ? up_rotation_volume : dn_rotation_volume);
 
 }
 
