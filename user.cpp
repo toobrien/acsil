@@ -283,6 +283,13 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 					up_rotation_volume	= 0;
 
 				}
+
+				int signed_volume = r.Type == SC_TS_BID ? -r.Volume : r.Volume;
+
+				up_rotation_delta 	+= signed_volume;
+				up_rotation_volume 	+= r.Volume;
+				dn_rotation_delta 	+= signed_volume;
+				dn_rotation_volume  += r.Volume;
 				
 				// rotation_high 	= max(rotation_high, r.Price);
 				// rotation_low	= min(rotation_low, r.Price);
@@ -335,13 +342,6 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 						rotation_length = max(from_rotation_low, rotation_length);
 
 				}
-
-				int signed_volume = r.Type == SC_TS_BID ? -r.Volume : r.Volume;
-
-				up_rotation_delta 	+= signed_volume;
-				up_rotation_volume 	+= r.Volume;
-				dn_rotation_delta 	+= signed_volume;
-				dn_rotation_volume  += r.Volume;
 
 			}
 
