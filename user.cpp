@@ -478,6 +478,112 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 }
 
 
+// computes bid, ask, and mid for a two leg spread, using the outright contracts
+// display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+
+SCSFExport scsf_two_leg_spread(SCStudyInterfaceRef sc) {
+
+	SCInputRef front_leg_sym	= sc.Input[0];
+	SCInputRef front_leg_qty	= sc.Input[1];
+	SCInputRef back_leg_sym		= sc.Input[2];
+	SCInputRef back_leg_qty		= sc.Input[3];
+
+
+	if (sc.SetDefaults) {
+
+			sc.GraphName 			= "two_leg_spread";
+			sc.AutoLoop 			= 0;
+			sc.UsesMarketDepthData 	= 1;
+			// sc.HideStudy 			= 1;
+
+			sc.Subgraph[0].Name = "bid";
+			sc.Subgraph[1].Name = "ask";
+			sc.Subgraph[2].Name = "mid";
+
+			front_leg_sym.Name = "front_leg_sym";
+			front_leg_sym.SetString("");
+
+			front_leg_qty.Name = "front_leg_qty";
+			front_leg_qty.SetInt(0);
+
+			back_leg_sym.Name = "back_leg_sym";
+			back_leg_sym.SetString("");
+
+			back_leg_qty.Name = "back_leg_qty";
+			back_leg_qty.SetInt(0);
+
+			return;
+
+		}
+
+	const char * 	front_leg_sym_val 	= front_leg_sym.GetString();
+	const char * 	back_leg_sym_val	= back_leg_sym.GetString();
+	int 			front_leg_qty_val	= front_leg_qty.GetInt();
+	int				back_leg_qty_val 	= back_leg_qty.GetInt();
+
+	if (
+		std::strcmp(front_leg_sym_val, "")	== 0 ||
+		std::strcmp(back_leg_sym_val, "")	== 0 ||
+		front_leg_qty_val 					== 0 ||
+		back_leg_qty_val					== 0
+	)
+
+		// study not initialized
+
+		return;
+
+	
+	s_MarketDepthEntry de;
+
+	float bid 		= 0;
+	float ask 		= 0;
+	float mid 		= 0;
+	float front_bid = 0;
+	float front_ask = 0;
+	float back_bid 	= 0;
+	float back_ask 	= 0;
+
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(front_leg_sym_val, de, 0);
+
+	front_bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(front_leg_sym_val, de, 0);
+
+	front_ask = de.AdjustedPrice;
+	
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(back_leg_sym_val, de, 0);
+
+	back_bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(back_leg_sym_val, de, 0);
+
+	back_ask = de.AdjustedPrice;
+
+	if (back_leg_qty_val < 0) {
+
+		// + front - back
+
+		bid = front_ask * front_leg_qty_val + back_bid * back_leg_qty_val;
+		ask = front_bid * front_leg_qty_val + back_ask * back_leg_qty_val;
+
+	} else {
+
+		// - front + back
+
+		bid = front_bid * front_leg_qty_val + back_ask * back_leg_qty_val;
+		ask = front_ask * front_leg_qty_val + back_bid * back_leg_qty_val;
+
+	}
+
+	mid = (bid + ask) / 2;
+
+	sc.Subgraph[0][sc.Index] = bid;
+	sc.Subgraph[1][sc.Index] = ask;
+	sc.Subgraph[2][sc.Index] = mid;
+
+}
+
+
 /*
 
 INCOMPLETE
