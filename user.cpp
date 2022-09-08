@@ -480,6 +480,10 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 // computes bid, ask, and mid for a two leg spread, using the outright contracts
 // display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// under the study settings, make sure to:
+// 		- uncheck "Draw Study Underneath Main Price Graph"
+//		- set the tick size correctly in "Value Format"
+//		- choose a color for each of the subgraphs on the "Subgraphs" tab
 
 SCSFExport scsf_two_leg_spread(SCStudyInterfaceRef sc) {
 
