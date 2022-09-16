@@ -514,9 +514,10 @@ double vwap(
 
 	// sc.AddMessageToLog(("total_volume: " + std::to_string(total_volume)).c_str(), 1);
 
-	for (int i = 0; i < len_tas && trade_count < num_trades; i++)
+	for (int i = 0; i < len_tas && trade_count < num_trades; i++) {
 		
 		r = tas[i];
+		r *= sc.RealTimePriceMultiplier;
 
 		if (r.Type != SC_TS_BIDASKVALUES) {
 
@@ -528,7 +529,9 @@ double vwap(
 
 		}
 
-	// sc.AddMessageToLog(("vwap: " + std::to_string(vwap_)).c_str(), 1);
+	}
+
+	// sc.AddMessageToLog(("vwap (vwap_func): " + std::to_string(vwap_)).c_str(), 1);
 
 	return vwap_;
 
