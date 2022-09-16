@@ -510,6 +510,8 @@ double vwap(
 	
 	}
 
+	trade_count = 0;
+
 	// sc.AddMessageToLog(("total_volume: " + std::to_string(total_volume)).c_str(), 1);
 
 	for (int i = 0; i < len_tas && trade_count < num_trades; i++)
