@@ -478,7 +478,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 }
 
 
-float vwap(
+double vwap(
 	const SCStudyInterfaceRef &	sc,
 	const SCString & 			sym, 
 	const int & 				num_trades
@@ -489,36 +489,42 @@ float vwap(
 	sc.GetTimeAndSalesForSymbol(sym, tas);
 
 	const int 		len_tas			= tas.Size();
-	const int 		start 			= len_tas - num_trades;
 	int				total_volume 	= 0; 
-	int 			vwap_			= 0;
+	double 			vwap_			= 0;
+	int 			trade_count		= 0;
 	s_TimeAndSales	r;
 
 	// sc.AddMessageToLog(("len_tas: " + std::to_string(len_tas)).c_str(), 1);
 
-	if (start < 0)
-
-		return vwap_;
-
-	for (int i = start; i < len_tas; i++) {
+	for (int i = 0; i < len_tas && trade_count < num_trades; i++) {
 
 		r = tas[i];
 		r *= sc.RealTimePriceMultiplier;
 
-		if (r.Type != SC_TS_BIDASKVALUES)
+		if (r.Type != SC_TS_BIDASKVALUES) {
 
-			total_volume += r.Volume;
+			total_volume	+= r.Volume;
+			trade_count 	+= 1;
+		
+		}
 	
 	}
 
-	for (int i = start; i < len_tas; i++)
+	// sc.AddMessageToLog(("total_volume: " + std::to_string(total_volume)).c_str(), 1);
+
+	for (int i = 0; i < len_tas && trade_count < num_trades; i++)
 		
 		r = tas[i];
-		r *= sc.RealTimePriceMultiplier;
 
-		if (r.Type != SC_TS_BIDASKVALUES)
+		if (r.Type != SC_TS_BIDASKVALUES) {
 
-			vwap_ += (r.Price * r.Volume / total_volume);
+			// sc.AddMessageToLog(("r.Price: " + std::to_string(r.Price)).c_str(), 1);
+			// sc.AddMessageToLog(("r.Volume: " + std::to_string(r.Volume)).c_str(), 1);
+
+			vwap_ 		+= (r.Price * r.Volume / total_volume);
+			trade_count += 1;
+
+		}
 
 	// sc.AddMessageToLog(("vwap: " + std::to_string(vwap_)).c_str(), 1);
 
@@ -590,11 +596,15 @@ SCSFExport scsf_two_leg_spread_vwap(SCStudyInterfaceRef sc) {
 
 		return;
 
-	const int front_leg_vwap 	= vwap(sc, front_leg_sym_val, num_trades_val);
-	const int back_leg_vwap		= vwap(sc, back_leg_sym_val, num_trades_val);
-	const int vwap_ 			= front_leg_vwap * front_leg_qty_val + back_leg_vwap * back_leg_qty_val;
+	const double front_leg_vwap = vwap(sc, front_leg_sym_val, num_trades_val);
+	const double back_leg_vwap	= vwap(sc, back_leg_sym_val, num_trades_val);
+	const double vwap_ 			= front_leg_vwap * front_leg_qty_val + back_leg_vwap * back_leg_qty_val;
 
-	sc.Subgraph[0][sc.Index] 	= vwap_;
+	// sc.AddMessageToLog(("front_leg_vwap: " + std::to_string(front_leg_vwap)).c_str(), 1);
+	// sc.AddMessageToLog(("back_leg_vwap: " + std::to_string(back_leg_vwap)).c_str(), 1);
+	// sc.AddMessageToLog(("vwap_: " + std::to_string(vwap_)).c_str(), 1);
+
+	sc.Subgraph[0][sc.Index] = vwap_;
 
 }
 
