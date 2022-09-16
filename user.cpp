@@ -478,12 +478,137 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 }
 
 
+float vwap(
+	const SCStudyInterfaceRef &	sc,
+	const SCString & 			sym, 
+	const int & 				num_trades
+) {
+
+	c_SCTimeAndSalesArray tas;
+
+	sc.GetTimeAndSalesForSymbol(sym, tas);
+
+	const int 		len_tas			= tas.Size();
+	const int 		start 			= len_tas - num_trades;
+	int				total_volume 	= 0; 
+	int 			vwap_			= 0;
+	s_TimeAndSales	r;
+
+	// sc.AddMessageToLog(("len_tas: " + std::to_string(len_tas)).c_str(), 1);
+
+	if (start < 0)
+
+		return vwap_;
+
+	for (int i = start; i < len_tas; i++) {
+
+		r = tas[i];
+		r *= sc.RealTimePriceMultiplier;
+
+		if (r.Type != SC_TS_BIDASKVALUES)
+
+			total_volume += r.Volume;
+	
+	}
+
+	for (int i = start; i < len_tas; i++)
+		
+		r = tas[i];
+		r *= sc.RealTimePriceMultiplier;
+
+		if (r.Type != SC_TS_BIDASKVALUES)
+
+			vwap_ += (r.Price * r.Volume / total_volume);
+
+	// sc.AddMessageToLog(("vwap: " + std::to_string(vwap_)).c_str(), 1);
+
+	return vwap_;
+
+}
+
+
+// computes vwap of a two-leg spread using the outright contracts
+// display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// under the study settings, make sure to:
+//		
+//		- set "Chart Region" to 1
+// 		- uncheck "Draw Study Underneath Main Price Graph"
+//		- set the tick size correctly in "Value Format"
+//		- choose a color for the vwap subgraphs on the "Subgraphs" tab
+//		- check "Value Label"
+
+
+SCSFExport scsf_two_leg_spread_vwap(SCStudyInterfaceRef sc) {
+
+	SCInputRef front_leg_sym 	= sc.Input[0];
+	SCInputRef front_leg_qty 	= sc.Input[1];
+	SCInputRef back_leg_sym 	= sc.Input[2];
+	SCInputRef back_leg_qty 	= sc.Input[3];
+	SCInputRef num_trades		= sc.Input[4];
+
+	if (sc.SetDefaults) {
+
+		sc.GraphName 		= "two_leg_spread_vwap";
+		sc.AutoLoop 		= 0;
+
+		sc.Subgraph[0].Name = "vwap";
+
+		front_leg_sym.Name = "front_leg_sym";
+		front_leg_sym.SetString("");
+
+		front_leg_qty.Name = "front_leg_qty";
+		front_leg_qty.SetInt(0);
+
+		back_leg_sym.Name = "back_leg_sym";
+		back_leg_sym.SetString("");
+
+		back_leg_qty.Name = "back_leg_qty";
+		back_leg_qty.SetInt(0);
+
+		num_trades.Name = "num_trades";
+		num_trades.SetInt(0);
+
+		return;
+
+	}
+
+	const char * 	front_leg_sym_val 	= front_leg_sym.GetString();
+	const char * 	back_leg_sym_val	= back_leg_sym.GetString();
+	int 			front_leg_qty_val	= front_leg_qty.GetInt();
+	int				back_leg_qty_val 	= back_leg_qty.GetInt();
+	int 			num_trades_val 		= num_trades.GetInt();
+
+	if (
+		std::strcmp(front_leg_sym_val, "")	== 0 ||
+		std::strcmp(back_leg_sym_val, "")	== 0 ||
+		front_leg_qty_val 					== 0 ||
+		back_leg_qty_val					== 0 ||
+		num_trades_val 						== 0
+	)
+
+		// study not initialized
+
+		return;
+
+	const int front_leg_vwap 	= vwap(sc, front_leg_sym_val, num_trades_val);
+	const int back_leg_vwap		= vwap(sc, back_leg_sym_val, num_trades_val);
+	const int vwap_ 			= front_leg_vwap * front_leg_qty_val + back_leg_vwap * back_leg_qty_val;
+
+	sc.Subgraph[0][sc.Index] 	= vwap_;
+
+}
+
+
 // computes bid, ask, and mid for a two leg spread, using the outright contracts
 // display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
 // under the study settings, make sure to:
+//
+//		- set "Chart Region" to 1
 // 		- uncheck "Draw Study Underneath Main Price Graph"
 //		- set the tick size correctly in "Value Format"
 //		- choose a color for each of the subgraphs on the "Subgraphs" tab
+//		- check "Value Label"
+
 
 SCSFExport scsf_two_leg_spread(SCStudyInterfaceRef sc) {
 
