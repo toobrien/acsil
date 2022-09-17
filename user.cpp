@@ -539,7 +539,7 @@ double vwap(
 
 
 // computes vwap of a two-leg spread using the outright contracts
-// display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// display on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
 // under the study settings, make sure to:
 //		
 //		- set "Chart Region" to 1
@@ -547,6 +547,7 @@ double vwap(
 //		- set the tick size correctly in "Value Format"
 //		- choose a color for the vwap subgraphs on the "Subgraphs" tab
 //		- check "Value Label"
+//		- set "Draw Style" to "Subgraph Name and Value Labels Only"
 
 
 SCSFExport scsf_two_leg_spread_vwap(SCStudyInterfaceRef sc) {
@@ -614,8 +615,52 @@ SCSFExport scsf_two_leg_spread_vwap(SCStudyInterfaceRef sc) {
 }
 
 
+// computes vwap of a single symbol
+// display on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// under the study settings, make sure to:
+//		
+//		- set "Chart Region" to 1
+// 		- uncheck "Draw Study Underneath Main Price Graph"
+//		- set the tick size correctly in "Value Format"
+//		- choose a color for the vwap subgraphs on the "Subgraphs" tab
+//		- check "Value Label"
+//		- set "Draw Style" to "Subgraph Name and Value Labels Only"
+
+
+SCSFExport scsf_vwap_single(SCStudyInterfaceRef sc) {
+
+	SCInputRef num_trades		= sc.Input[4];
+
+	if (sc.SetDefaults) {
+
+		sc.GraphName 		= "vwap_single";
+		sc.AutoLoop 		= 0;
+
+		sc.Subgraph[0].Name = "vwap";
+
+		num_trades.Name = "num_trades";
+		num_trades.SetInt(0);
+
+		return;
+
+	}
+
+	const char * 	sym = sc.Symbol;
+	int 			num_trades_val	= num_trades.GetInt();
+
+	if (num_trades_val == 0)
+
+		// study not initialized
+
+		return;
+
+	sc.Subgraph[0][sc.Index] = vwap(sc, sym, num_trades_val);
+
+}
+
+
 // computes bid, ask, and mid for a two leg spread, using the outright contracts
-// display these values on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// display on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
 // under the study settings, make sure to:
 //
 //		- set "Chart Region" to 1
@@ -623,6 +668,7 @@ SCSFExport scsf_two_leg_spread_vwap(SCStudyInterfaceRef sc) {
 //		- set the tick size correctly in "Value Format"
 //		- choose a color for each of the subgraphs on the "Subgraphs" tab
 //		- check "Value Label"
+//		- set "Draw Style" to "Subgraph Name and Value Labels Only"
 
 
 SCSFExport scsf_two_leg_spread(SCStudyInterfaceRef sc) {
