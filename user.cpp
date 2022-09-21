@@ -496,7 +496,7 @@ double vwap(
 
 	// sc.AddMessageToLog(("len_tas: " + std::to_string(len_tas)).c_str(), 1);
 
-	for (int i = 0; i < len_tas && trade_count < num_trades; i++) {
+	for (int i = len_tas - 1; i >= 0 && trade_count < num_trades; i--) {
 
 		r = tas[i];
 		r *= sc.RealTimePriceMultiplier;
@@ -514,7 +514,7 @@ double vwap(
 
 	// sc.AddMessageToLog(("total_volume: " + std::to_string(total_volume)).c_str(), 1);
 
-	for (int i = 0; i < len_tas && trade_count < num_trades; i++) {
+	for (int i = len_tas - 1; i >= 0 && trade_count < num_trades; i--) {
 		
 		r = tas[i];
 		r *= sc.RealTimePriceMultiplier;
