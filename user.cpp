@@ -478,6 +478,139 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 }
 
 
+SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
+
+	SCInputRef min_rotation_input = sc.Input[0];
+
+	int &		ts_seq				= sc.GetPersistentInt(0);
+	int	&		rotation_side		= sc.GetPersistentInt(1);
+	double &	rotation_high		= sc.GetPersistentDouble(2);
+	double &	rotation_low		= sc.GetPersistentDouble(3);
+	double &	rotation_length		= sc.GetPersistentDouble(4);
+	int & 		rotation_count 		= sc.GetPersistentInt(5);
+	double &	rotation_len_avg	= sc.GetPersistentDouble(6);
+	int &		rotation_len_max	= sc.GetPersistentInt(7);
+
+	if (sc.SetDefaults) {
+
+		sc.GraphName 			= "rotation";
+		sc.AutoLoop 			= 0;
+		sc.UsesMarketDepthData 	= 1;
+		sc.HideStudy 			= 1;
+
+		sc.Subgraph[0].Name = "start";
+		sc.Subgraph[1].Name = "avg";
+		sc.Subgraph[2].Name = "max";
+
+		ts_seq				= -1;
+		rotation_side		= 0;
+		rotation_high		= DBL_MIN;
+		rotation_low		= DBL_MAX;
+		rotation_length 	= DBL_MIN;
+		rotation_count		= 0;
+		rotation_len_avg    = 0.0;
+		rotation_len_max    = 0;
+
+		min_rotation_input.Name = "min_rotation";
+		min_rotation_input.SetInt(0);
+
+		return;
+
+	}
+
+	bool 	rotation_change = false;
+	int		min_rotation	= min_rotation_input.GetInt();
+
+	if (min_rotation < 1)
+
+		return;
+
+	c_SCTimeAndSalesArray tas;
+	sc.GetTimeAndSales(tas);
+
+	int len_tas	= tas.Size();
+
+	for (int i = 0; i < len_tas; i++) {
+
+		s_TimeAndSales r = tas[i];
+
+		if (r.Type != SC_TS_BIDASKVALUES && r.Sequence > ts_seq) {
+			
+			r 		*= sc.RealTimePriceMultiplier;
+			ts_seq	=  r.Sequence;
+
+			if (r.Price > rotation_high)
+
+				rotation_high = r.Price;
+
+			if (r.Price < rotation_low)
+
+				rotation_low = r.Price;
+			
+			double from_rotation_high 	= (rotation_high - r.Price) / sc.TickSize;
+			double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
+
+			if (from_rotation_high >= min_rotation) {
+
+				// in down rotation
+				
+				if (rotation_side > -1) {
+
+					// from up rotation
+
+					rotation_change		=  true;
+					rotation_count      += 1;
+					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
+					rotation_len_max 	=  max(rotation_length, rotation_len_max);
+					rotation_side 		=  -1;
+					rotation_low 		=  r.Price;
+					rotation_length		=  from_rotation_high;
+
+					continue;			// skip subsequent if block
+
+				} else
+				
+					// continuing down rotation
+
+					rotation_length = max(from_rotation_high, rotation_length);
+			
+			}
+
+			if (from_rotation_low >= min_rotation) {
+
+				// in up rotation
+
+				if (rotation_side < 1) {
+
+					// from down rotation
+
+					rotation_change		=  true;
+					rotation_count      += 1;
+					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
+					rotation_len_max 	=  max(rotation_length, rotation_len_max);
+					rotation_side		=  1;
+					rotation_high		=  r.Price;
+					rotation_length 	=  from_rotation_low;
+
+				} else
+
+					// continuing up rotation
+
+					rotation_length = max(from_rotation_low, rotation_length);
+
+			}
+
+		}
+
+	}
+
+	sc.Subgraph[0][sc.Index] = rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : 0;
+	sc.Subgraph[1][sc.Index] = rotation_side == 1 ? rotation_low + rotation_len_avg : rotation_side == -1 ? rotation_high - rotation_len_avg : 0;
+	sc.Subgraph[2][sc.Index] = rotation_side == 1 ? rotation_low + rotation_len_max : rotation_side == -1 ? rotation_high - rotation_len_max : 0;
+
+}
+
+
 double vwap(
 	const SCStudyInterfaceRef &	sc,
 	const SCString & 			sym, 
