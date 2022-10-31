@@ -508,7 +508,6 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 		sc.GraphName 			= "rotation";
 		sc.AutoLoop 			= 0;
 		sc.UsesMarketDepthData 	= 1;
-		sc.HideStudy 			= 1;
 
 		sc.Subgraph[0].Name = "start";
 		sc.Subgraph[1].Name = "avg";
