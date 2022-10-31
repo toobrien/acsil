@@ -478,6 +478,18 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 }
 
 
+// displays the current rotation start, as well as the endpoint average and max rotations from that point.
+// display on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
+// under the study settings, make sure to:
+//		
+//		- set "Chart Region" to 1
+// 		- uncheck "Draw Study Underneath Main Price Graph"
+//		- set the tick size correctly in "Value Format"
+//		- choose a color for the vwap subgraphs on the "Subgraphs" tab
+//		- check "Value Label"
+//		- set "Draw Style" to "Subgraph Name and Value Labels Only"
+
+
 SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 	SCInputRef min_rotation_input = sc.Input[0];
