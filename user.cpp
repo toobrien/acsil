@@ -529,8 +529,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 	}
 
-	bool 	rotation_change = false;
-	int		min_rotation	= min_rotation_input.GetInt();
+	int	min_rotation = min_rotation_input.GetInt();
 
 	if (min_rotation < 1)
 
@@ -569,7 +568,6 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 					// from up rotation
 
-					rotation_change		=  true;
 					rotation_count      += 1;
 					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
 					rotation_len_max 	=  max(rotation_length, rotation_len_max);
@@ -595,7 +593,6 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 					// from down rotation
 
-					rotation_change		=  true;
 					rotation_count      += 1;
 					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
 					rotation_len_max 	=  max(rotation_length, rotation_len_max);
