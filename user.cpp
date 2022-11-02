@@ -510,10 +510,11 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 		sc.UsesMarketDepthData 	= 1;
 
 		sc.Subgraph[0].Name = "start";
-		sc.Subgraph[1].Name = "avg";
-		sc.Subgraph[2].Name = "max";
+		sc.Subgraph[1].Name = "end";
+		sc.Subgraph[2].Name = "avg";
+		sc.Subgraph[3].Name = "max";
 
-		ts_seq				= -1;
+		ts_seq				= 0;
 		rotation_side		= 0;
 		rotation_high		= DBL_MIN;
 		rotation_low		= DBL_MAX;
@@ -545,7 +546,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 		s_TimeAndSales r = tas[i];
 
 		if (r.Type != SC_TS_BIDASKVALUES && r.Sequence > ts_seq) {
-			
+
 			r 		*= sc.RealTimePriceMultiplier;
 			ts_seq	=  r.Sequence;
 
@@ -612,9 +613,17 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 	}
 
-	sc.Subgraph[0][sc.Index] = rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : 0;
-	sc.Subgraph[1][sc.Index] = rotation_side == 1 ? rotation_low + rotation_len_avg : rotation_side == -1 ? rotation_high - rotation_len_avg : 0;
-	sc.Subgraph[2][sc.Index] = rotation_side == 1 ? rotation_low + rotation_len_max : rotation_side == -1 ? rotation_high - rotation_len_max : 0;
+	const float start 	= rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : 0;
+	const float end     = rotation_side == 1 ? rotation_high : rotation_side == -1 ? rotation_low : 0;
+	const float avg 	= rotation_side == 1 ? rotation_low + rotation_len_avg * sc.TickSize : rotation_side == -1 ? rotation_high - rotation_len_avg * sc.TickSize : 0;
+	const float max 	= rotation_side == 1 ? rotation_low + rotation_len_max * sc.TickSize : rotation_side == -1 ? rotation_high - rotation_len_max * sc.TickSize : 0;
+
+	// sc.AddMessageToLog(("avg: " + std::to_string(avg)).c_str(), 1);
+
+	sc.Subgraph[0][sc.Index] = start;
+	sc.Subgraph[1][sc.Index] = end;
+	sc.Subgraph[2][sc.Index] = avg;
+	sc.Subgraph[3][sc.Index] = max;
 
 }
 
