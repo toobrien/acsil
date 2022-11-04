@@ -479,6 +479,7 @@ SCSFExport scsf_order_flow(SCStudyInterfaceRef sc) {
 
 
 // displays the current rotation start, as well as the endpoint average and max rotations from that point.
+// the rotation input is defined in ticks.
 // display on the DOM using this procedure: https://www.sierrachart.com/index.php?page=doc/ChartStudies.html#NameValueLabels
 // under the study settings, make sure to:
 //		
@@ -501,7 +502,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 	double &	rotation_length		= sc.GetPersistentDouble(4);
 	int & 		rotation_count 		= sc.GetPersistentInt(5);
 	double &	rotation_len_sum	= sc.GetPersistentDouble(6);
-	int &		rotation_len_max	= sc.GetPersistentInt(7);
+	double &	rotation_len_max	= sc.GetPersistentDouble(7);
 
 	if (sc.SetDefaults) {
 
@@ -521,7 +522,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 		rotation_length 	= DBL_MIN;
 		rotation_count		= 0;
 		rotation_len_sum    = 0.0;
-		rotation_len_max    = 0;
+		rotation_len_max    = 0.0;
 
 		min_rotation_input.Name = "min_rotation";
 		min_rotation_input.SetInt(0);
@@ -530,9 +531,9 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 	}
 
-	int	min_rotation = min_rotation_input.GetInt();
+	const float	min_rotation = min_rotation_input.GetInt() * sc.TickSize;
 
-	if (min_rotation < 1)
+	if (min_rotation <= 0)
 
 		return;
 
@@ -558,8 +559,8 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 				rotation_low = r.Price;
 			
-			double from_rotation_high 	= (rotation_high - r.Price) / sc.TickSize;
-			double from_rotation_low	= (r.Price - rotation_low) / sc.TickSize;
+			double from_rotation_high 	= rotation_high - r.Price;
+			double from_rotation_low	= r.Price - rotation_low;
 
 			if (from_rotation_high >= min_rotation) {
 
@@ -574,17 +575,15 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 					rotation_side 		=  -1;
 					rotation_low 		=  r.Price;
 					rotation_length		=  from_rotation_high;
+					rotation_len_max 	= max(rotation_length, rotation_len_max);
 
 					continue;			// skip subsequent if block
 
-				} else {
+				} else
 				
 					// continuing down rotation
 
 					rotation_length		= max(from_rotation_high, rotation_length);
-					rotation_len_max 	= max(rotation_length, rotation_len_max);
-				
-				}
 			
 			}
 
@@ -595,8 +594,6 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 				if (rotation_side < 1) {
 
 					// from down rotation
-
-					
 						
 					rotation_count      += 1;
 					rotation_len_sum    += rotation_length;
@@ -604,30 +601,28 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 					rotation_high		=  r.Price;
 					rotation_length 	=  from_rotation_low;
 
-				} else {
+				} else
 
 					// continuing up rotation
 
 					rotation_length 	= max(from_rotation_low, rotation_length);
-					rotation_len_max 	= max(rotation_length, rotation_len_max);
-
-				}
 
 			}
+
+			rotation_len_max = max(rotation_length, rotation_len_max);
 
 		}
 
 	}
 
-	const float rotation_avg = (rotation_len_sum * sc.TickSize) / rotation_count;
-	const float rotation_max = rotation_len_max * sc.TickSize;
+	const float rotation_len_avg = rotation_len_sum / rotation_count;
 
 	const float start 	= rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : 0;
 	const float end     = rotation_side == 1 ? rotation_high : rotation_side == -1 ? rotation_low : 0;
-	const float avg 	= rotation_side == 1 ? start + rotation_avg : rotation_side == -1 ? start - rotation_avg : 0;
-	const float max 	= rotation_side == 1 ? start + rotation_max : rotation_side == -1 ? start - rotation_max : 0;
+	const float avg 	= rotation_side == 1 ? start + rotation_len_avg : rotation_side == -1 ? start - rotation_len_avg : 0;
+	const float max 	= rotation_side == 1 ? start + rotation_len_max : rotation_side == -1 ? start - rotation_len_max : 0;
 
-	// sc.AddMessageToLog(("min_rotation: " + std::to_string(min_rotation)).c_str(), 1);
+	// sc.AddMessageToLog(("rotation_len_max: " + std::to_string(rotation_len_max)).c_str(), 1);
 
 	sc.Subgraph[0][sc.Index] = start;
 	sc.Subgraph[1][sc.Index] = end;
