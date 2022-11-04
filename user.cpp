@@ -500,7 +500,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 	double &	rotation_low		= sc.GetPersistentDouble(3);
 	double &	rotation_length		= sc.GetPersistentDouble(4);
 	int & 		rotation_count 		= sc.GetPersistentInt(5);
-	double &	rotation_len_avg	= sc.GetPersistentDouble(6);
+	double &	rotation_len_sum	= sc.GetPersistentDouble(6);
 	int &		rotation_len_max	= sc.GetPersistentInt(7);
 
 	if (sc.SetDefaults) {
@@ -520,7 +520,7 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 		rotation_low		= DBL_MAX;
 		rotation_length 	= DBL_MIN;
 		rotation_count		= 0;
-		rotation_len_avg    = 0.0;
+		rotation_len_sum    = 0.0;
 		rotation_len_max    = 0;
 
 		min_rotation_input.Name = "min_rotation";
@@ -568,21 +568,23 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 				if (rotation_side > -1) {
 
 					// from up rotation
-
+					
 					rotation_count      += 1;
-					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
-					rotation_len_max 	=  max(rotation_length, rotation_len_max);
+					rotation_len_sum    += rotation_length;
 					rotation_side 		=  -1;
 					rotation_low 		=  r.Price;
 					rotation_length		=  from_rotation_high;
 
 					continue;			// skip subsequent if block
 
-				} else
+				} else {
 				
 					// continuing down rotation
 
-					rotation_length = max(from_rotation_high, rotation_length);
+					rotation_length		= max(from_rotation_high, rotation_length);
+					rotation_len_max 	= max(rotation_length, rotation_len_max);
+				
+				}
 			
 			}
 
@@ -594,18 +596,22 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 					// from down rotation
 
+					
+						
 					rotation_count      += 1;
-					rotation_len_avg    += (static_cast<float>(rotation_length) / rotation_count);
-					rotation_len_max 	=  max(rotation_length, rotation_len_max);
+					rotation_len_sum    += rotation_length;
 					rotation_side		=  1;
 					rotation_high		=  r.Price;
 					rotation_length 	=  from_rotation_low;
 
-				} else
+				} else {
 
 					// continuing up rotation
 
-					rotation_length = max(from_rotation_low, rotation_length);
+					rotation_length 	= max(from_rotation_low, rotation_length);
+					rotation_len_max 	= max(rotation_length, rotation_len_max);
+
+				}
 
 			}
 
@@ -613,12 +619,15 @@ SCSFExport scsf_rotation(SCStudyInterfaceRef sc) {
 
 	}
 
+	const float rotation_avg = (rotation_len_sum * sc.TickSize) / rotation_count;
+	const float rotation_max = rotation_len_max * sc.TickSize;
+
 	const float start 	= rotation_side == 1 ? rotation_low : rotation_side == -1 ? rotation_high : 0;
 	const float end     = rotation_side == 1 ? rotation_high : rotation_side == -1 ? rotation_low : 0;
-	const float avg 	= rotation_side == 1 ? rotation_low + rotation_len_avg * sc.TickSize : rotation_side == -1 ? rotation_high - rotation_len_avg * sc.TickSize : 0;
-	const float max 	= rotation_side == 1 ? rotation_low + rotation_len_max * sc.TickSize : rotation_side == -1 ? rotation_high - rotation_len_max * sc.TickSize : 0;
+	const float avg 	= rotation_side == 1 ? start + rotation_avg : rotation_side == -1 ? start - rotation_avg : 0;
+	const float max 	= rotation_side == 1 ? start + rotation_max : rotation_side == -1 ? start - rotation_max : 0;
 
-	// sc.AddMessageToLog(("avg: " + std::to_string(avg)).c_str(), 1);
+	// sc.AddMessageToLog(("min_rotation: " + std::to_string(min_rotation)).c_str(), 1);
 
 	sc.Subgraph[0][sc.Index] = start;
 	sc.Subgraph[1][sc.Index] = end;
