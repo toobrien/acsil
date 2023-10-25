@@ -1,4 +1,5 @@
 #include "sierrachart.h"
+#include <cmath>
 #include <string>
 #include <stdlib.h>
 #include <map>
@@ -809,6 +810,87 @@ SCSFExport scsf_vwap_single(SCStudyInterfaceRef sc) {
 		return;
 
 	sc.Subgraph[0][sc.Index] = vwap(sc, sym, num_trades_val);
+
+}
+
+
+// ...
+
+SCSFExport scsf_m1_linreg(SCStudyInterface sc) {
+
+	SCInputRef m1_sym	= sc.Input[0];
+	SCInputRef m1_0 	= sc.Input[1];
+	SCInputRef mi_0 	= sc.Input[2];
+	SCInputRef beta 	= sc.Input[3];
+	SCInputRef alpha 	= sc.Input[4];
+
+	if (sc.SetDefaults) {
+
+		sc.GraphName 			= "m1_linreg";
+		sc.AutoLoop				= 0;
+		sc.UsesMarketDepthData	= 1;
+
+		sc.Subgraph[0].Name 	= "mid";
+
+		m1_sym.Name 			= "m1_sym";
+		m1_sym.SetString("");
+
+		m1_0.Name 				= "m1_0";
+		m1_0.setFloat(0.0);
+
+		mi_0.Name 				= "mi_0";
+		mi_0.setFloat(0.0);
+
+		beta.Name 				= "beta";
+		beta.setFloat(0.0);
+
+		alpha.Name 				= "alpha";
+		alpha.setFloat(0.0);
+
+		return;
+
+	}
+
+	const char * 	m1_sym 	= m1_sym.GetString();
+	float 			m1_0	= m1_0.getFloat();
+	float 			mi_0 	= mi_0.getFloat();
+	float 			beta 	= beta.getFloat();
+	float 			alpha 	= alpha.getFloat();
+
+	if (
+		std::strcmp(m1_sym, "") == 0 ||
+		m1_0 					== 0 ||
+		mi_0 					== 0 ||
+		beta 					== 0 ||
+		alpha 					== 0
+	)
+
+		// study not initialized
+
+		return;
+
+	s_MarketDepthEntry de;
+
+	float bid 	= 0.0;
+	float ask 	= 0.0;
+	float mid 	= 0.0;
+	float model = 0.0;
+
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym, de, 0);
+
+	bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(m1_sym, de, 0);
+
+	ask = de.AdjustedPrice;
+
+	mid = (bid + ask) / 2;
+
+	// 2.6808 * e**(log(2.9490 / 3.0178) * 0.5640 + 0.0054)
+
+	model = mi_0 * std::pow(M_E, std::log(mid / m1_0) * beta + alpha);
+
+	sc.Subgraph[0][sc.Index] = model;
 
 }
 
