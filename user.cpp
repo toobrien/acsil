@@ -814,7 +814,7 @@ SCSFExport scsf_vwap_single(SCStudyInterfaceRef sc) {
 }
 
 
-// m1 / m[i] linreg; model and initial values from: https://github.com/toobrien/intraday/blob/master/charts/m1_log_reg.py
+// m[i] / m[0] linreg; model and initial values from: https://github.com/toobrien/intraday/blob/master/charts/m1_log_reg.py
 
 SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
