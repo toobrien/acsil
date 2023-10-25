@@ -816,7 +816,7 @@ SCSFExport scsf_vwap_single(SCStudyInterfaceRef sc) {
 
 // ...
 
-SCSFExport scsf_m1_linreg(SCStudyInterface sc) {
+SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
 	SCInputRef m1_sym	= sc.Input[0];
 	SCInputRef m1_0 	= sc.Input[1];
@@ -836,33 +836,33 @@ SCSFExport scsf_m1_linreg(SCStudyInterface sc) {
 		m1_sym.SetString("");
 
 		m1_0.Name 				= "m1_0";
-		m1_0.setFloat(0.0);
+		m1_0.SetFloat(0.0);
 
 		mi_0.Name 				= "mi_0";
-		mi_0.setFloat(0.0);
+		mi_0.SetFloat(0.0);
 
 		beta.Name 				= "beta";
-		beta.setFloat(0.0);
+		beta.SetFloat(0.0);
 
 		alpha.Name 				= "alpha";
-		alpha.setFloat(0.0);
+		alpha.SetFloat(0.0);
 
 		return;
 
 	}
 
-	const char * 	m1_sym 	= m1_sym.GetString();
-	float 			m1_0	= m1_0.getFloat();
-	float 			mi_0 	= mi_0.getFloat();
-	float 			beta 	= beta.getFloat();
-	float 			alpha 	= alpha.getFloat();
+	const char * 	m1_sym_val 	= m1_sym.GetString();
+	float 			m1_0_val	= m1_0.GetFloat();
+	float 			mi_0_val 	= mi_0.GetFloat();
+	float 			beta_val 	= beta.GetFloat();
+	float 			alpha_val 	= alpha.GetFloat();
 
 	if (
-		std::strcmp(m1_sym, "") == 0 ||
-		m1_0 					== 0 ||
-		mi_0 					== 0 ||
-		beta 					== 0 ||
-		alpha 					== 0
+		std::strcmp(m1_sym_val, "") == 0 ||
+		m1_0_val 					== 0 ||
+		mi_0_val 					== 0 ||
+		beta_val 					== 0 ||
+		alpha_val 					== 0
 	)
 
 		// study not initialized
@@ -876,19 +876,15 @@ SCSFExport scsf_m1_linreg(SCStudyInterface sc) {
 	float mid 	= 0.0;
 	float model = 0.0;
 
-	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym, de, 0);
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
 
 	bid = de.AdjustedPrice;
 
-	sc.GetAskMarketDepthEntryAtLevelForSymbol(m1_sym, de, 0);
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
 
-	ask = de.AdjustedPrice;
-
-	mid = (bid + ask) / 2;
-
-	// 2.6808 * e**(log(2.9490 / 3.0178) * 0.5640 + 0.0054)
-
-	model = mi_0 * std::pow(M_E, std::log(mid / m1_0) * beta + alpha);
+	ask		= de.AdjustedPrice;
+	mid 	= (bid + ask) / 2;
+	model 	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val);
 
 	sc.Subgraph[0][sc.Index] = model;
 
