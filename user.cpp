@@ -823,6 +823,8 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	SCInputRef mi_0 	= sc.Input[2];
 	SCInputRef beta 	= sc.Input[3];
 	SCInputRef alpha 	= sc.Input[4];
+	SCInputRef lo 		= sc.Input[5];
+	SCInputRef hi 		= sc.Input[6];
 
 	if (sc.SetDefaults) {
 
@@ -831,6 +833,8 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 		sc.UsesMarketDepthData	= 1;
 
 		sc.Subgraph[0].Name 	= "mid";
+		sc.Subgraph[1].Name 	= "lo";
+		sc.Subgraph[2].Name 	= "hi";
 
 		m1_sym.Name 			= "m1_sym";
 		m1_sym.SetString("");
@@ -847,6 +851,12 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 		alpha.Name 				= "alpha";
 		alpha.SetFloat(0.0);
 
+		lo.Name 				= "lo";
+		lo.SetFloat(0.0);
+
+		hi.Name 				= "hi";
+		hi.SetFloat(0.0);
+
 		return;
 
 	}
@@ -856,6 +866,8 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	float 			mi_0_val 	= mi_0.GetFloat();
 	float 			beta_val 	= beta.GetFloat();
 	float 			alpha_val 	= alpha.GetFloat();
+	float 			lo_val		= lo.GetFloat();
+	float 			hi_val 		= hi.GetFloat();
 
 	if (
 		std::strcmp(m1_sym_val, "") == 0 ||
@@ -871,10 +883,12 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
 	s_MarketDepthEntry de;
 
-	float bid 	= 0.0;
-	float ask 	= 0.0;
-	float mid 	= 0.0;
-	float model = 0.0;
+	float bid 		= 0.0;
+	float ask 		= 0.0;
+	float mid 		= 0.0;
+	float model 	= 0.0;
+	float lo_ 		= 0.0;
+	float hi_		= 0.0;
 
 	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
 
@@ -885,8 +899,18 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	ask		= de.AdjustedPrice;
 	mid 	= (bid + ask) / 2;
 	model 	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val);
+	lo_		= mi_0_val * std::pow(M_E, std::log(lo_val));
+	hi_		= mi_0_val * std::pow(M_E, std::log(hi_val));
 
 	sc.Subgraph[0][sc.Index] = model;
+
+	if (lo_val)
+
+		sc.Subgraph[1][sc.Index] = lo_;
+
+	if (hi_val)
+
+		sc.Subgraph[2][sc.Index] = hi_;
 
 }
 
