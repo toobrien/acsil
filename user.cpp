@@ -902,7 +902,7 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	lo_		= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val + lo_val);
 	hi_ 	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val + hi_val);
 	
-	sc.Subgraph[0][sc.Index] = model;
+	sc.Subgraph[0][sc.Index] = model_;
 
 	if (lo_val)
 
