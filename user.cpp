@@ -887,6 +887,8 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	float ask 		= 0.0;
 	float mid 		= 0.0;
 	float model_	= 0.0;
+	float lo_ 		= 0.0;
+	float hi_ 		= 0.0;
 
 	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
 
