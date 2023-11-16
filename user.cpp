@@ -886,9 +886,6 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 	float bid 		= 0.0;
 	float ask 		= 0.0;
 	float mid 		= 0.0;
-	float model 	= 0.0;
-	float lo_ 		= 0.0;
-	float hi_		= 0.0;
 
 	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
 
@@ -898,19 +895,16 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
 	ask		= de.AdjustedPrice;
 	mid 	= (bid + ask) / 2;
-	model 	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val);
-	lo_		= mi_0_val * std::pow(M_E, std::log(lo_val));
-	hi_		= mi_0_val * std::pow(M_E, std::log(hi_val));
 
-	sc.Subgraph[0][sc.Index] = model;
+	sc.Subgraph[0][sc.Index] = mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val);
 
 	if (lo_val)
 
-		sc.Subgraph[1][sc.Index] = lo_;
+		sc.Subgraph[1][sc.Index] = mi_0_val * std::pow(M_E, lo_val);
 
 	if (hi_val)
 
-		sc.Subgraph[2][sc.Index] = hi_;
+		sc.Subgraph[2][sc.Index] = mi_0_val * std::pow(M_E, hi_val);
 
 }
 
