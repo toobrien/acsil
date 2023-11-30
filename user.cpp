@@ -818,60 +818,55 @@ SCSFExport scsf_vwap_single(SCStudyInterfaceRef sc) {
 
 SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
-	SCInputRef m1_sym	= sc.Input[0];
-	SCInputRef m1_0 	= sc.Input[1];
+	SCInputRef m0_sym	= sc.Input[0];
+	SCInputRef m0_0 	= sc.Input[1];
 	SCInputRef mi_0 	= sc.Input[2];
 	SCInputRef beta 	= sc.Input[3];
 	SCInputRef alpha 	= sc.Input[4];
-	SCInputRef lo 		= sc.Input[5];
-	SCInputRef hi 		= sc.Input[6];
 
 	if (sc.SetDefaults) {
 
-		sc.GraphName 			= "m1_linreg";
-		sc.AutoLoop				= 0;
-		sc.UsesMarketDepthData	= 1;
+		sc.GraphName 				= "m1_linreg";
+		sc.GraphRegion 				= 0;
+		sc.AutoLoop					= 0;
+		sc.UsesMarketDepthData		= 1;
 
-		sc.Subgraph[0].Name 	= "mid";
-		sc.Subgraph[1].Name 	= "lo";
-		sc.Subgraph[2].Name 	= "hi";
+		sc.Subgraph[0].Name 		= "model";
+		sc.Subgraph[0].DrawStyle 	= DRAWSTYLE_SUBGRAPH_NAME_AND_VALUE_LABELS_ONLY;
+		sc.Subgraph[0].LineLabel 	= LL_DISPLAY_NAME | LL_VALUE_ALIGN_VALUES_SCALE | LL_DISPLAY_VALUE;
 
-		m1_sym.Name 			= "m1_sym";
-		m1_sym.SetString("");
+		sc.Subgraph[1].Name 		= "res";
+		sc.Subgraph[1].DrawStyle 	= DRAWSTYLE_SUBGRAPH_NAME_AND_VALUE_LABELS_ONLY;
+		sc.Subgraph[1].LineLabel	= LL_DISPLAY_VALUE | LL_VALUE_ALIGN_VALUES_SCALE | LL_DISPLAY_CUSTOM_VALUE_AT_Y;
 
-		m1_0.Name 				= "m1_0";
-		m1_0.SetFloat(0.0);
+		m0_sym.Name 				= "m0_sym";
+		m0_sym.SetString("");
 
-		mi_0.Name 				= "mi_0";
+		m0_0.Name 					= "m0_0";
+		m0_0.SetFloat(0.0);
+
+		mi_0.Name 					= "mi_0";
 		mi_0.SetFloat(0.0);
 
-		beta.Name 				= "beta";
+		beta.Name 					= "beta";
 		beta.SetFloat(0.0);
 
-		alpha.Name 				= "alpha";
+		alpha.Name 					= "alpha";
 		alpha.SetFloat(0.0);
-
-		lo.Name 				= "lo";
-		lo.SetFloat(0.0);
-
-		hi.Name 				= "hi";
-		hi.SetFloat(0.0);
 
 		return;
 
 	}
 
-	const char * 	m1_sym_val 	= m1_sym.GetString();
-	float 			m1_0_val	= m1_0.GetFloat();
+	const char * 	m0_sym_val 	= m0_sym.GetString();
+	float 			m0_0_val	= m0_0.GetFloat();
 	float 			mi_0_val 	= mi_0.GetFloat();
 	float 			beta_val 	= beta.GetFloat();
 	float 			alpha_val 	= alpha.GetFloat();
-	float 			lo_val		= lo.GetFloat();
-	float 			hi_val 		= hi.GetFloat();
 
 	if (
-		std::strcmp(m1_sym_val, "") == 0 ||
-		m1_0_val 					== 0 ||
+		std::strcmp(m0_sym_val, "") == 0 ||
+		m0_0_val 					== 0 ||
 		mi_0_val 					== 0 ||
 		beta_val 					== 0 ||
 		alpha_val 					== 0
@@ -885,32 +880,39 @@ SCSFExport scsf_m1_linreg(SCStudyInterfaceRef sc) {
 
 	float bid 		= 0.0;
 	float ask 		= 0.0;
-	float mid 		= 0.0;
-	float model_	= 0.0;
-	float lo_ 		= 0.0;
-	float hi_ 		= 0.0;
+	float m0_mid 	= 0.0;
+	float mi_mid	= 0.0;
+	float m0_chg	= 0.0;
+	float mi_chg  	= 0.0;
+	float model_chg = 0.0;
+	float res 		= 0.0;
 
-	sc.GetBidMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(m0_sym_val, de, 0);
 
-	bid = de.AdjustedPrice;
+	bid 	= de.AdjustedPrice;
 
-	sc.GetAskMarketDepthEntryAtLevelForSymbol(m1_sym_val, de, 0);
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(m0_sym_val, de, 0);
 
 	ask		= de.AdjustedPrice;
-	mid 	= (bid + ask) / 2;
-	model_	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val);
-	lo_		= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val + lo_val);
-	hi_ 	= mi_0_val * std::pow(M_E, std::log(mid / m1_0_val) * beta_val + alpha_val + hi_val);
-	
-	sc.Subgraph[0][sc.Index] = model_;
+	m0_mid 	= (bid + ask) / 2;
 
-	if (lo_val)
+	sc.GetBidMarketDepthEntryAtLevel(de, 0);
 
-		sc.Subgraph[1][sc.Index] = lo_;
+	bid		= de.AdjustedPrice;
 
-	if (hi_val)
+	sc.GetAskMarketDepthEntryAtLevel(de, 0); 
 
-		sc.Subgraph[2][sc.Index] = hi_;
+	ask 	= de.AdjustedPrice;
+	mi_mid  = (bid + ask) / 2;
+
+	m0_chg 		= std::log(m0_mid / m0_0_val);
+	mi_chg 		= std::log(mi_mid / mi_0_val);
+	model_chg	= m0_chg * beta_val + alpha_val;
+	res			= mi_chg - model_chg;
+
+	sc.Subgraph[0][sc.Index] 			= mi_0_val * std::pow(M_E, model_chg);
+	sc.Subgraph[1].Data[sc.Index]		= res;
+	sc.Subgraph[1].Arrays[0][sc.Index]	= mi_0_val * std::pow(M_E, mi_chg);
 
 }
 
