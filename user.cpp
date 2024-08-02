@@ -1032,6 +1032,105 @@ SCSFExport scsf_two_leg_spread(SCStudyInterfaceRef sc) {
 }
 
 
+SCSFExport scsf_spread_offset(SCStudyInterfaceRef sc) {
+
+	SCInputRef x_sym	= sc.Input[0];
+	SCInputRef x_qty	= sc.Input[1];
+	SCInputRef y_sym	= sc.Input[2];
+	SCInputRef y_qty	= sc.Input[3];
+	SCInputRef avg 		= sc.Input[4];
+
+
+	if (sc.SetDefaults) {
+
+			sc.GraphName 			= "spread_offset";
+			sc.AutoLoop 			= 0;
+			sc.UsesMarketDepthData 	= 1;
+			// sc.HideStudy 			= 1;
+
+			sc.Subgraph[0].Name 		= "offset";
+			sc.Subgraph[0].DrawStyle 	= DRAWSTYLE_SUBGRAPH_NAME_AND_VALUE_LABELS_ONLY;
+			sc.Subgraph[0].LineLabel	= LL_DISPLAY_VALUE | LL_VALUE_ALIGN_VALUES_SCALE | LL_DISPLAY_CUSTOM_VALUE_AT_Y;
+
+			x_sym.Name = "x_sym";
+			x_sym.SetString("");
+
+			x_qty.Name = "x_qty";
+			x_qty.SetInt(0);
+
+			y_sym.Name = "y_sym";
+			y_sym.SetString("");
+
+			y_qty.Name = "y_qty";
+			y_qty.SetInt(0);
+
+			avg.Name = "avg";
+			avg.SetFloat(0.0);
+
+			return;
+
+		}
+
+	const char * 	x_sym_val 	= x_sym.GetString();
+	const char * 	y_sym_val	= y_sym.GetString();
+	int 			x_qty_val	= x_qty.GetInt();
+	int				y_qty_val 	= y_qty.GetInt();
+	float 			avg_val 	= avg.GetFloat();
+
+	if (
+		std::strcmp(x_sym_val, "")	== 0 	||
+		std::strcmp(y_sym_val, "")	== 0 	||
+		x_qty_val 					== 0 	||
+		y_qty_val					== 0	||
+		avg_val 					== 0.0
+	)
+
+		// study not initialized
+
+		return;
+
+	
+	s_MarketDepthEntry de;
+
+	float bid 		= 0;
+	float ask 		= 0;
+	float y_mid 	= 0;
+	float offset	= 0;
+	float x_bid 	= 0;
+	float x_ask 	= 0;
+	float y_bid 	= 0;
+	float y_ask 	= 0;
+
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(x_sym_val, de, 0);
+
+	x_bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(x_sym_val, de, 0);
+
+	x_ask = de.AdjustedPrice;
+	
+	sc.GetBidMarketDepthEntryAtLevelForSymbol(y_sym_val, de, 0);
+
+	y_bid = de.AdjustedPrice;
+
+	sc.GetAskMarketDepthEntryAtLevelForSymbol(y_sym_val, de, 0);
+
+	y_ask = de.AdjustedPrice;
+
+	// spread is y - x
+
+	bid = x_bid * x_qty_val + y_ask * y_qty_val;
+	ask = x_ask * x_qty_val + y_bid * y_qty_val;
+
+	y_mid 	= (y_bid + y_ask) / 2;
+	offset	= (bid + ask) / 2 - avg_val;
+
+	sc.Subgraph[0].Arrays[0][sc.Index]	= y_mid;
+	sc.Subgraph[0].Data[sc.Index]		= offset;
+
+}
+
+
 /*
 
 INCOMPLETE
